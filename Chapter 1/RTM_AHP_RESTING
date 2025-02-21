@@ -1,0 +1,122 @@
+# Build up of the AHP current decelerates firing of the RTM neuron
+
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# initialize:
+t = 600
+E_Na = 50
+E_K = -100
+E_L = -67
+g_Na = 100
+g_K = 80
+g_L = 0.1
+g_AHP = 0.25
+I = 0.0
+C = 1
+delta_t = 2**(-7)
+
+N = int(t/delta_t)
+
+v = np.zeros(N+1)
+n = np.zeros(N+1)
+h = np.zeros(N+1)
+c = np.zeros(N+1)
+t_value = np.linspace(0, t, N+1)
+
+
+# Define Alpha:
+def a_m(v):
+  return (0.32*(v+54)) / (1 - np.exp(-(v+54)/4))
+
+def a_n(v):
+  return (0.032*(v+52)) / (1 - np.exp(-(v+52)/5))
+
+def a_h(v):
+  return 0.128 * np.exp(-(v+50)/18)
+
+
+# Define Beta:
+def b_m(v):
+  return (0.28*(v+27)) / (np.exp((v+27)/5)-1)
+
+def b_n(v):
+  return 0.5 * np.exp(-(v+57)/40)
+
+def b_h(v):
+  return 4 / (1 + np.exp(-(v+27)/5))
+
+# Define Lmiting Functions:
+def m_inf(v):
+      return a_m(v) / (a_m(v) + b_m(v))
+
+def n_inf(v):
+  return a_n(v) / (a_n(v) + b_n(v))
+
+def tau_n(v):
+  return 1 / (a_n(v) + b_n(v))
+
+def h_inf(v):
+  return a_h(v) / (a_h(v) + b_h(v))
+
+def tau_h(v):
+  return 1 / (a_h(v) + b_h(v))
+
+def c_inf(v):
+  return (4 / 25) * ((120-v) / (1 + np.exp(-(v+15)/5)))
+
+
+
+# Define the AHP currents model ODEs
+def spike(x, t):
+    v, n, h, c = x
+    i_Na = g_Na * m_inf(v)**3 * h * (E_Na - v)
+    i_K = g_K * n**4 * (E_K - v)
+    i_L = g_L * (E_L - v)
+    i_AHP = g_AHP * c * (E_K - v)
+    dvdt = (i_Na + i_K + i_L + i_AHP + I) / C
+    dndt = (n_inf(v) - n) / tau_n(v)
+    dhdt = (h_inf(v) - h) / tau_h(v)
+    dcdt = (c_inf(v) - c) / 80
+    return [dvdt, dndt, dhdt, dcdt]
+
+# Initial conditions for AHP currents model
+v0 = -70
+n0 = n_inf(v0)
+h0 = h_inf(v0)
+c0 = 0
+x0 = [v0, n0, h0, c0]
+
+# Solve the M_Currents model ODE
+sol = odeint(spike, x0, t_value)
+v = sol[:, 0]
+n = sol[:, 1]
+h = sol[:, 2]
+c = sol[:, 3]
+
+
+# Plot:
+import matplotlib.pyplot as plt
+
+# Plot v, c:
+plt.figure(figsize=(12, 6))
+
+# Plot v:
+plt.subplot(2, 2, 1)
+plt.plot(t_value, v, 'r')
+plt.ylim(-70, -66)
+plt.xlim(0, 600)
+plt.xlabel('t [ms]')
+plt.ylabel('v [mv]')
+
+# Plot c:
+plt.subplot(2, 2, 2)
+plt.plot(t_value, c, 'b')
+plt.ylim(0,0.005)
+plt.xlim(0, 600)
+plt.xlabel('t [ms]')
+plt.ylabel('c')
+
+plt.tight_layout()
+plt.show()
