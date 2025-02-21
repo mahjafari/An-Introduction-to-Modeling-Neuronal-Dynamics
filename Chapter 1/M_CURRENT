@@ -1,0 +1,41 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Constants and parameters
+w = 0.031
+I = 1.0
+t = 100
+delta_t = 2**(-7)
+
+N = int(t / delta_t)
+
+v = np.linspace(-100, 50, N+1)
+
+
+# Define limiting functions for the model M_Current
+def w_inf(v):
+  return 1 / (1 + np.exp(-(v+35)/10))
+
+def tau_w(v):
+    return 400 / (3.3 * np.exp((v+35)/20) + np.exp(-(v+35)/20))
+
+# Plot
+plt.figure(figsize=(12, 6))
+
+# Plot v for both models
+plt.subplot(2, 2, 1)
+plt.plot(v, w_inf(v), 'k')
+plt.ylim(0, 1)
+plt.xlim(-100, 50)
+plt.xlabel('v [mv]')
+plt.ylabel(r'$\omega_{\infty}$')
+
+plt.subplot(2, 2, 2)
+plt.plot(v, tau_w(v), 'k')
+plt.ylim(0, 150)
+plt.xlim(-100, 50)
+plt.xlabel('v [mv]')
+plt.ylabel(r'$\tau_\omega$')
+
+plt.tight_layout()
+plt.show()
