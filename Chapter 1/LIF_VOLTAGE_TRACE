@@ -1,0 +1,52 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# Constants and parameters
+v_res = 0
+v_thr = 1
+time_values = [100, 50]
+delta_t = 2**(-7)
+tau_m_values = [10, 2]
+I_values = [0.11, 0.500022]
+
+# Define the Normalized LIF system of ODEs
+def spike(x, t, tau_m, I):
+    v = x[0]
+    dvdt = - (v / tau_m) + I
+    return [dvdt]
+
+# Initial condition for the normalized LIF model
+v0 = 0
+
+# Solve and plot for each tau_m and I combination
+for j in range(2):
+  t = time_values[j]
+  tau_m = tau_m_values[j]
+  I = I_values[j]
+  N = int(t / delta_t)
+  v = np.zeros(N+1)
+  t_values = np.linspace(0, t, N+1)
+  v[0] = v0
+
+  for i in range(N):
+    if v[i] > v_thr:
+        v[i] = v_res
+    dvdt = spike([v[i]], t_values[i], tau_m, I)[0]
+    v[i+1] = v[i] + dvdt * delta_t
+
+  # Plotting the results
+  plt.figure(figsize=(7, 3))
+  for i in range(N):
+      if v[i] == v_res:
+          plt.plot(t_values[i:i+2], v[i:i+2], color='black', linestyle='solid')
+      else:
+          plt.plot(t_values[i:i+2], v[i:i+2], color='black', linestyle='dashed')
+
+  plt.xlim(min(t_values), max(t_values))
+  plt.ylim(0, 2)
+  plt.xlabel('t [ms]')
+  plt.ylabel('v [mv]')
+  plt.title('Normalized LIF Model Voltage')
+  plt.legend([f'LIF Model\n$\\tau_m = {tau_m}$ ms\n$I = {I} μA/cm^2$'])
+  plt.show()
