@@ -1,0 +1,30 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Constants and parameters
+I = 1.0
+t = 100
+delta_t = 2**(-7)
+
+N = int(t / delta_t)
+
+v = np.linspace(-100, 50, N+1)
+
+
+# Define limiting functions for the model AHP Currents
+def c_inf(v):
+  return (4 / 25) * ((120-v) / (1 + np.exp(-(v+15)/5)))
+
+# Plot
+plt.figure(figsize=(12, 6))
+
+# Plot v for both models
+plt.subplot(2, 2, 1)
+plt.plot(v, c_inf(v), 'k')
+plt.ylim(0, 20)
+plt.xlim(-100, 50)
+plt.xlabel('v [mv]')
+plt.ylabel(r'$c_{\infty}$')
+
+plt.tight_layout()
+plt.show()
