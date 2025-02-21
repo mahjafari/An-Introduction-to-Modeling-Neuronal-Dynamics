@@ -1,0 +1,48 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# Constants and parameters
+v_res = 0
+v_thr = 1
+t = 150
+delta_t = 2**(-7)
+tau_m = 2
+I = 0.15
+
+N = int(t / delta_t)
+v = np.zeros(N+1)
+t_values = np.linspace(0, t, N+1)
+
+# Define the Normalized QIF system of ODEs
+def spike(x, t, tau_m, I):
+    v = x[0]
+    dvdt = - ((v * (1-v)) / tau_m) + I
+    return [dvdt]
+
+# Initial condition for the QIF model
+v0 = 0
+v[0] = v0
+
+# Solve and plot for each tau_m and I combination
+for i in range(N):
+  if I > 1 / (4*tau_m):
+    if v[i] > v_thr:
+        v[i] = v_res
+    dvdt = spike([v[i]], t_values[i], tau_m, I)[0]
+    v[i+1] = v[i] + dvdt * delta_t
+
+# Plotting the results
+for i in range(N):
+    if v[i] == v_res:
+        plt.plot(t_values[i:i+2], v[i:i+2], color='black', linestyle='solid')
+    else:
+        plt.plot(t_values[i:i+2], v[i:i+2], color='black', linestyle='dashed')
+
+plt.xlim(min(t_values), max(t_values))
+plt.ylim(0, 2)
+plt.xlabel('t [ms]')
+plt.ylabel('v [mv]')
+plt.title('Voltage Trace of a QIF Neuron')
+plt.legend([f'$\\tau_m = {tau_m}$ ms\n$I = {I} μA/cm^2$'])
+plt.show()
