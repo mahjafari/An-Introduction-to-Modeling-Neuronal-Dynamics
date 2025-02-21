@@ -1,4 +1,4 @@
-# Buildup of the M_current decelerates firing of the RTM neuron
+# Build up of the M_current decelerates firing of the RTM neuron
 
 import numpy as np
 from scipy.integrate import odeint
