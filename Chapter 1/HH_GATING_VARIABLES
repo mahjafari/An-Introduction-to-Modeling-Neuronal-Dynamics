@@ -1,6 +1,7 @@
 # Hodgkin-Huxley Gating Variables
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 v = np.linspace(-100, 50, N+1)
 
