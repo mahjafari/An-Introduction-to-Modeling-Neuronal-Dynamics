@@ -1,4 +1,4 @@
-# Buildup of the AHP current decelerates firing of the RTM neuron
+# Build up of the AHP current decelerates firing of the RTM neuron
 
 import numpy as np
 from scipy.integrate import odeint
