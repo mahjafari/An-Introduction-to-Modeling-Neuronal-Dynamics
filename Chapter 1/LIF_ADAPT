@@ -1,0 +1,63 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# Constants and parameters
+v_res = 0
+v_thr = 1
+e = 0.05
+t = 300
+delta_t = 2**(-7)
+tau_m = 10
+tau_w = 40
+I = 0.13
+N = int(t / delta_t)
+v = np.zeros(N+1)
+w = np.zeros(N+1)
+t_values = np.linspace(0, t, N+1)
+
+# Define the Normalized LIF system of ODEs
+def spike(x, t):
+    v, w = x
+    dvdt = - (v / tau_m) + I - w * v
+    dwdt = - (w / tau_w)
+    return [dvdt, dwdt]
+
+# Initial condition for the normalized LIF model
+v[0] = 0
+w[1] = e
+
+# Solve and plot for each tau_m and I combination
+for i in range(N):
+    if v[i] > v_thr:
+        v[i] = v_res
+        w[i] += e  # Increase w by e after a spike
+    dvdt, dwdt = spike([v[i], w[i]], t_values[i])
+    v[i+1] = v[i] + dvdt * delta_t
+    w[i+1] = w[i] + dwdt * delta_t
+
+# Plotting the results
+plt.figure(figsize=(7, 5))
+
+# Plotting voltage v(t)
+plt.subplot(2, 1, 1)
+for i in range(N):
+  linestyle = 'solid' if v[i] == v_res else 'dashed'
+  plt.plot(t_values[i:i+2], v[i:i+2], color='black', linestyle=linestyle)
+plt.xlim(0, 300)
+plt.ylim(0, 4)
+plt.xlabel('Time [ms]')
+plt.ylabel('v [mV]')
+
+# Plotting adaptation variable w(t)
+plt.subplot(2, 1, 2)
+for i in range(N):
+  linestyle = 'solid' if w[i+1] == w[i] - e else 'dashed'
+  plt.plot(t_values[i:i+2], w[i:i+2], color='black', linestyle=linestyle)
+plt.xlim(0, 300)
+plt.ylim(0, 0.1)
+plt.xlabel('Time [ms]')
+plt.ylabel('w')
+
+plt.tight_layout()
+plt.show()
