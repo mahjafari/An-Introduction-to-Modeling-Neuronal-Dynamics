@@ -1,0 +1,56 @@
+# Builup of the AHP current decelerates firing of the RTM neuron
+
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# initialize:
+t = 60
+tau_m = 10
+tau_w = 40
+I = 0.13
+w_k = 0.05
+w_k_1 = 0.08
+delta_t = 2**(-7)
+
+N = int(t/delta_t)
+
+v = np.zeros(N+1)
+w = np.zeros(N+1)
+t_value = np.linspace(0, t, N+1)
+
+
+# Define the ODEs
+def spike(x, t):
+    v, w = x
+    dvdt = -(v/tau_m) + I - w_k * np.exp(-t/tau_w) * v
+    dwdt = -(w/tau_m) + I - w_k_1 * np.exp(-t/tau_w) * w
+    return [dvdt, dwdt]
+
+# Initial conditions
+v0 = 0
+w0 = 0
+x0 = [v0, w0]
+
+# Solve the ODE
+sol = odeint(spike, x0, t_value)
+v = sol[:, 0]
+w = sol[:, 1]
+
+
+# Plot:
+import matplotlib.pyplot as plt
+
+# Plot v, w:
+plt.figure(figsize=(8, 3))
+
+plt.plot(t_value, v, 'k', linestyle = 'solid', label = 'v')
+plt.plot(t_value, w, 'k', linestyle = 'dashed', label = r'$\tilde{v}$')
+plt.ylim(0, 1)
+plt.xlim(0, 60)
+plt.xlabel('t [ms]')
+plt.ylabel('v [mv]')
+plt.legend()
+
+plt.tight_layout()
+plt.show()
