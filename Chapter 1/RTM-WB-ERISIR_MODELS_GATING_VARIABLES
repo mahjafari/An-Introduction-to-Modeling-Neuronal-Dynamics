@@ -1,0 +1,150 @@
+# RTM-WB-Erisir models gating variables
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Membrane potential
+v = np.linspace(-100, 50, 500)
+
+# Define Alpha and Beta functions for each model
+
+# RTM Model
+def a_m_RTM(v):
+  return (0.32*(v+54)) / (1 - np.exp(-(v+54)/4))
+
+def a_n_RTM(v):
+  return (0.032*(v+52)) / (1 - np.exp(-(v+52)/5))
+
+def a_h_RTM(v):
+  return 0.128 * np.exp(-(v+50)/18)
+
+def b_m_RTM(v):
+  return (0.28*(v+27)) / (np.exp((v+27)/5)-1)
+
+def b_n_RTM(v):
+  return 0.5 * np.exp(-(v+57)/40)
+
+def b_h_RTM(v):
+  return 4 / (1 + np.exp(-(v+27)/5))
+
+# WB Model
+def a_m_WB(v):
+  return ((v+35)/10) / (1 - np.exp(-(v+35)/10))
+
+def a_n_WB(v):
+  return (0.05 * (v+34)) / (1 - np.exp(-(v+34)/10))
+
+def a_h_WB(v):
+  return 0.35 * np.exp(-(v+58)/20)
+
+def b_m_WB(v):
+  return 4 * np.exp(-(v+60)/18)
+
+def b_n_WB(v):
+  return 0.625 * np.exp(-(v+44)/80)
+
+def b_h_WB(v):
+  return 5 / (1 + np.exp(-(v+28)/10))
+
+# Erisir Model
+def a_m_Er(v):
+  return (-40 * (75.5-v)) / (1 - np.exp((75.5-v)/13.5))
+
+def a_n_Er(v):
+  return (95-v) / (np.exp((95-v)/11.8) - 1)
+
+def a_h_Er(v):
+  return 0.0035 * np.exp(-v/24.186)
+
+def b_m_Er(v):
+  return 1.2262 * np.exp(-v/42.284)
+
+def b_n_Er(v):
+  return 0.025 * np.exp(-v/22.222)
+
+def b_h_Er(v):
+  return (-0.017 * (v+51.25)) / (np.exp(-(v+51.25)/5.2) - 1)
+
+# Define Limiting Functions
+def m_inf(a_m, b_m, v):
+    return a_m(v) / (a_m(v) + b_m(v))
+
+def tau_m(a_m, b_m, v):
+    return 1 / (a_m(v) + b_m(v))
+
+def n_inf(a_n, b_n, v):
+    return a_n(v) / (a_n(v) + b_n(v))
+
+def tau_n(a_n, b_n, v):
+    return 1 / (a_n(v) + b_n(v))
+
+def h_inf(a_h, b_h, v):
+    return a_h(v) / (a_h(v) + b_h(v))
+
+def tau_h(a_h, b_h, v):
+    return 1 / (a_h(v) + b_h(v))
+
+# Models' parameters
+models = [
+    ('RTM', a_m_RTM, b_m_RTM, a_n_RTM, b_n_RTM, a_h_RTM, b_h_RTM),
+    ('WB', a_m_WB, b_m_WB, a_n_WB, b_n_WB, a_h_WB, b_h_WB),
+    ('Erisir', a_m_Er, b_m_Er, a_n_Er, b_n_Er, a_h_Er, b_h_Er)
+]
+
+colors = ['r', 'b', 'black']
+
+plt.figure(figsize=(8, 8))
+
+for i, (name, a_m, b_m, a_n, b_n, a_h, b_h) in enumerate(models):
+    color = colors[i]
+
+    plt.subplot(3, 2, 1)
+    plt.plot(v, m_inf(a_m, b_m, v), color, label=name)
+    plt.xlabel('v [mV]')
+    plt.ylabel(r'$m_{\infty}$')
+    plt.ylim(0, 1)
+    plt.xlim(-100, 50)
+    plt.legend()
+
+    plt.subplot(3, 2, 2)
+    plt.plot(v, tau_m(a_m, b_m, v), color, label=name)
+    plt.xlabel('v [mV]')
+    plt.ylabel(r'$\tau_m [ms]$')
+    plt.ylim(0, 10)
+    plt.xlim(0, 50)
+    plt.legend()
+
+    plt.subplot(3, 2, 3)
+    plt.plot(v, n_inf(a_n, b_n, v), color, label=name)
+    plt.xlabel('v [mV]')
+    plt.ylabel(r'$n_{\infty}$')
+    plt.ylim(0, 1)
+    plt.xlim(-100, 50)
+    plt.legend()
+
+    plt.subplot(3, 2, 4)
+    plt.plot(v, tau_n(a_n, b_n, v), color, label=name)
+    plt.xlabel('v [mV]')
+    plt.ylabel(r'$\tau_n [ms]$')
+    plt.ylim(0, 10)
+    plt.xlim(-100, 50)
+    plt.legend()
+
+    plt.subplot(3, 2, 5)
+    plt.plot(v, h_inf(a_h, b_h, v), color, label=name)
+    plt.xlabel('v [mV]')
+    plt.ylabel(r'$h_{\infty}$')
+    plt.ylim(0, 1)
+    plt.xlim(-100, 50)
+    plt.legend()
+
+    plt.subplot(3, 2, 6)
+    plt.plot(v, tau_h(a_h, b_h, v), color, label=name)
+    plt.xlabel('v [mV]')
+    plt.ylabel(r'$\tau_h [ms]$')
+    plt.ylim(0, 10)
+    plt.xlim(-100, 50)
+    plt.legend()
+
+plt.tight_layout()
+plt.show()
