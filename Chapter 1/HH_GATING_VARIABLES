@@ -1,0 +1,98 @@
+# Hodgkin-Huxley Gating Variables
+
+import matplotlib.pyplot as plt
+
+v = np.linspace(-100, 50, N+1)
+
+# Define Alpha rate functions
+def a_m(v):
+  return ((v + 45) / 10) / (1 - np.exp(-(v + 45) / 10))
+
+def a_n(v):
+  return ((v + 60) / 100) / (1 - np.exp(-(v + 60) / 10))
+
+def a_h(v):
+  return 0.07 * np.exp(-(v + 70) / 20)
+
+
+# Define Beta rate functions
+def b_m(v):
+  return 4 * np.exp(-(v + 70) / 18)
+
+def b_n(v):
+  return (1 / 8) * np.exp(-(v + 70) / 80)
+
+def b_h(v):
+  return 1 / (1 + np.exp(-(v + 40) / 10))
+
+
+# Define Limiting Functions for steady-state values and time constants
+def m_inf(v):
+  return a_m(v) / (a_m(v) + b_m(v))
+
+def tau_m(v):
+  return 1 / (a_m(v) + b_m(v))
+
+def n_inf(v):
+  return a_n(v) / (a_n(v) + b_n(v))
+
+def tau_n(v):
+  return 1 / (a_n(v) + b_n(v))
+
+def h_inf(v):
+  return a_h(v) / (a_h(v) + b_h(v))
+
+def tau_h(v):
+  return 1 / (a_h(v) + b_h(v))
+
+
+# Plotting m_inf, n_inf, h_inf, tau_m, tau_n, tau_h:
+plt.figure(figsize=(10, 8))
+
+# Plot m_inf:
+plt.subplot(3, 2, 1)
+plt.plot(v, m_inf(v))
+plt.xlabel('v [mv]')
+plt.ylabel(r'$m_{\infty}$')
+plt.ylim(0, 1)
+
+# Plot tau_m:
+plt.subplot(3, 2, 2)
+plt.plot(v, tau_m(v))
+plt.xlabel('v [mv]')
+plt.ylabel(r'$\tau_m [ms]$')
+plt.ylim(0, 1)
+
+# Plot n_inf:
+plt.subplot(3, 2, 3)
+plt.plot(v, n_inf(v))
+plt.xlabel('v [mv]')
+plt.ylabel(r'$n_{\infty}$')
+plt.ylim(0, 1)
+
+
+# Plot tau_n:
+plt.subplot(3, 2, 4)
+plt.plot(v, tau_n(v))
+plt.xlabel('v [mv]')
+plt.ylabel(r'$\tau_n(v) [ms]$')
+plt.ylim(0, 10)
+
+
+# Plot h_inf:
+plt.subplot(3, 2, 5)
+plt.plot(v, h_inf(v))
+plt.xlabel('v [mv]')
+plt.ylabel(r'$h_{\infty}$')
+plt.ylim(0, 1)
+
+
+# Plot tau_h(v):
+plt.subplot(3, 2, 6)
+plt.plot(v, tau_h(v))
+plt.xlabel('v [mv]')
+plt.ylabel(r'$\tau_h [ms]$')
+plt.ylim(0, 10)
+
+plt.tight_layout()
+plt.show()
