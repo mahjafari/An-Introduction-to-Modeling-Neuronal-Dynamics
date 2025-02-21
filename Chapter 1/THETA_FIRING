@@ -1,0 +1,44 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# Constants and parameters
+s_res = -np.pi
+s_thr = np.pi
+t = 150
+delta_t = 2**(-7)
+tau_m = 1/2
+I = 0.505
+
+N = int(t / delta_t)
+s = np.zeros(N+1)
+t_value = np.linspace(0, t, N+1)
+
+# Define the Normalized QIF system of ODEs
+def spike(x, t, tau_m, I):
+    s = x[0]
+    dsdt = - ( np.cos(s) / tau_m) + 2 * I * (1 + np.cos(s))
+    return [dsdt]
+
+# Initial condition for the QIF model
+s0 = 0
+s[0] = s0
+
+# Solve and plot for each tau_m and I combination
+for i in range(N):
+  if I > 1 / (4*tau_m):
+    if s[i] > s_thr:
+        s[i] = s_res
+    dsdt = spike([s[i]], t_values[i], tau_m, I)[0]
+    s[i+1] = s[i] + dsdt * delta_t
+
+S = 1 - np.cos(s)
+# Plotting the results
+plt.plot(t_value, S, 'k', label='$\\tau_m = {}$ ms\n$I = {} μA/cm^2$'.format(tau_m, I))
+plt.xlim(min(t_values), max(t_values))
+plt.ylim(0, 2)
+plt.xlabel('t [ms]')
+plt.ylabel('1 - cos($\\theta$)')
+plt.title('Periodic Firing')
+plt.legend()
+plt.show()
