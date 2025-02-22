@@ -1,0 +1,107 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# Parameters
+t = 200
+E_Na = 45
+E_K = -82
+E_L = -59
+g_Na = 120
+g_K = 36
+g_L = 0.3
+C = 1
+I = 10
+delta_t = 2**(-10)
+N = int(t / delta_t)
+
+# Time vector
+t_values = np.linspace(0, t, N+1)
+
+# Define Alpha and Beta functions
+def a_m(v):
+  if np.abs(v + 45) > 10**(-8):
+    return ((v + 45) / 10) / (1 - np.exp(-(v + 45) / 10))
+  else:
+    return 1
+
+def a_n(v):
+  return 0.01 * (60.0 + v) / (1 - np.exp(-(60.0 + v) / 10))
+
+def b_m(v):
+  return 4 * np.exp(-(v + 70) / 18)
+
+def b_n(v):
+  return (1 / 8) * np.exp(-(v + 70) / 80)
+
+# Define Limiting Functions
+def m_inf(v):
+  return a_m(v) / (a_m(v) + b_m(v))
+
+def n_inf(v):
+  return a_n(v) / (a_n(v) + b_n(v))
+#---------------------------------------------------------------------------------------------
+# Voltage range
+v_vec = np.linspace(-100, 50, N+1)
+n_vec = np.zeros_like(v_vec)
+
+# Binary search to find n
+for ij in range(len(v_vec)):
+  v = v_vec[ij]
+  n_L = 0
+  n_R = 1
+
+  while n_R - n_L > 1e-10:
+    n = (n_L + n_R) / 2
+    i_ion = (g_Na * m_inf(v)**3 * (0.83 - n) * (E_Na - v) +
+              g_K * n**4 * (E_K - v) +
+              g_L * (E_L - v) +
+              I)
+    if i_ion < 0:
+      n_R = n
+    else:
+      n_L = n
+
+  n_vec[ij] = (n_L + n_R) / 2
+  if n_vec[ij] > 1 - 1e-10:
+    n_vec[ij] = 2
+  if n_vec[ij] < 1e-10:
+    n_vec[ij] = -1
+#-------------------------------------------------------------------------------------------------
+def spike_HH(x, t):
+  v, n = x
+  dvdt = (1 / C) * (g_Na * (m_inf(v)**3) * (0.83 - n) * (E_Na - v) + g_K * n**4 * (E_K - v) + g_L * (E_L - v) + I)
+  dndt = (a_n(v) * (1 - n)) - (b_n(v) * n)
+  return [dvdt, dndt]  # dmdt and dhdt are not required
+
+# Initial conditions
+v0 = -70  # Initial membrane potential
+n0 = n_inf(v0)
+x0 = [v0, n0]
+
+# Solve the Hodgkin-Huxley ODE
+sol_HH = odeint(spike_HH, x0, t_values)
+v = sol_HH[:, 0]
+n = sol_HH[:, 1]
+#--------------------------------------------------------------------------------------------------
+# Calculate speed (derivatives of v and n)
+dvdt = np.gradient(v, t_values)
+dndt = np.gradient(n, t_values)
+speed = np.sqrt((dvdt / 150)**2 + (dndt / 0.35)**2)
+
+# Plot
+plt.figure(figsize=(7, 5))
+plt.plot(v, n, '-k', label='Limit Cycle')
+plt.plot(v_vec, n_inf(v_vec), '-r', label='n_inf(v)')
+plt.plot(v_vec, n_vec, '-b', label='n_vec')
+
+ind = np.where(speed > max(speed) * 0.02)
+plt.plot(v[ind], n[ind], '.b', markersize=5, label='High Speed')
+ind = np.where(speed <= max(speed) * 0.02)
+plt.plot(v[ind], n[ind], '.g', markersize=5, label='Low Speed')
+
+plt.xlabel('$v$ [mV]')
+plt.ylabel('$n$')
+plt.axis([-100, 50, 0, 1])
+plt.legend()
+plt.show()
