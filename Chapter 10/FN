@@ -1,0 +1,85 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# Parameters
+t = 400
+E_Na = 45
+E_K = -82
+E_L = -59
+g_Na = 120
+g_K = 36
+g_L = 0.3
+C = 1
+a = 1.25
+tau_n = 25
+I = -0.5
+delta_t = 2**(-10)
+N = int(t / delta_t)
+
+# Time vector
+t_values = np.linspace(0, t, N+1)
+
+# Define Alpha and Beta functions
+def a_m(v):
+  if np.abs(v + 45) > 10**(-8):
+    return ((v + 45) / 10) / (1 - np.exp(-(v + 45) / 10))
+  else:
+    return 1
+
+def a_n(v):
+  return 0.01 * (60.0 + v) / (1 - np.exp(-(60.0 + v) / 10))
+
+def b_m(v):
+  return 4 * np.exp(-(v + 70) / 18)
+
+def b_n(v):
+  return (1 / 8) * np.exp(-(v + 70) / 80)
+
+# Define Limiting Functions
+def m_inf(v):
+  return a_m(v) / (a_m(v) + b_m(v))
+
+def n_inf(v):
+  return a_n(v) / (a_n(v) + b_n(v))
+#---------------------------------------------------------------------------------------------
+# Voltage range
+v_vec = np.linspace(-100, 50, N+1)
+n_vec = np.zeros_like(v_vec)
+n_vec = v_vec - (v_vec**3 / 3) - I
+#-------------------------------------------------------------------------------------------------
+def spike_HH(x, t):
+  v, n = x
+  dvdt = v - (v**3 / 3) - n - I
+  dndt = (a*v - n) / tau_n
+  return [dvdt, dndt]  # dmdt and dhdt are not required
+
+# Initial conditions
+v0 = -70  # Initial membrane potential
+n0 = n_inf(v0)
+x0 = [v0, n0]
+
+# Solve the Hodgkin-Huxley ODE
+sol_HH = odeint(spike_HH, x0, t_values)
+v = sol_HH[:, 0]
+n = sol_HH[:, 1]
+#--------------------------------------------------------------------------------------------------
+# Example output (if needed)
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(10, 6))
+plt.subplot(2, 2, 1)
+plt.plot(v, n, '-k')
+plt.plot(v_vec, a*v_vec, '-r')
+plt.plot(v_vec, n_vec, '-b')
+plt.xlabel('$v$ [mV]')
+plt.ylabel('$n$')
+plt.axis([-3, 3, -3, 3])
+
+plt.subplot(2, 2, 2)
+plt.plot(t_values, v, '-k')
+plt.xlabel('$t$ [ms]')
+plt.ylabel('$v$ [mV]')
+plt.axis([0, 400, -3, 3])
+
+plt.show()
