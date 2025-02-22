@@ -84,7 +84,7 @@ sol_HH = odeint(spike_HH, x0, t_values)
 v = sol_HH[:, 0]
 n = sol_HH[:, 1]
 #--------------------------------------------------------------------------------------------------
-# Example output (if needed)
+# Plot:
 import matplotlib.pyplot as plt
 
 plt.figure(figsize=(7, 5))
