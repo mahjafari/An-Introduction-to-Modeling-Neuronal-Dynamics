@@ -1,0 +1,103 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# initialize:
+t = 50
+E_Na = 45
+E_K = -82
+E_L = -59
+g_Na = 120
+g_K = 36
+g_L = 0.3
+C = 1
+I = 10
+delta_t = 2**(-10)
+
+N = int(t/delta_t)
+
+v = np.zeros(N+1)
+m = np.zeros(N+1)
+n = np.zeros(N+1)
+h = np.zeros(N+1)
+t_value = np.linspace(0, t, N+1)
+
+
+# Define Alpha:
+def a_m(v):
+  return ((v+45)/10) / (1 - np.exp(-(v+45)/10))
+
+def a_n(v):
+  return ((v+60)/100) / (1 - np.exp(-(v+60)/10))
+
+def a_h(v):
+  return 0.07 * np.exp(-(v+70)/20)
+
+
+# Define Beta:
+def b_m(v):
+  return 4 * np.exp(-(v+70)/18)
+
+def b_n(v):
+  return (1/8) * np.exp(-(v+70)/80)
+
+def b_h(v):
+  return 1 / (1 + np.exp(-(v+40)/10))
+
+# Define Limiting Functions:
+def m_inf(v):
+  return a_m(v) / (a_m(v) + b_m(v))
+
+def tau_m(v):
+  return 1 / (a_m(v) + b_m(v))
+
+def n_inf(v):
+  return a_n(v) / (a_n(v) + b_n(v))
+
+def tau_n(v):
+  return 1 / (a_n(v) + b_n(v))
+
+def h_inf(v):
+  return a_h(v) / (a_h(v) + b_h(v))
+
+def tau_h(v):
+  return 1 / (a_h(v) + b_h(v))
+
+# Define the Hodgkin-Huxley system of ODEs
+def spike_HH(x, t):
+  v, m, n, h = x
+  i_Na = g_Na * m**3 * h * (E_Na - v)
+  i_K = g_K * n**4 * (E_K - v)
+  i_L = g_L * (E_L - v)
+  dvdt = (i_Na + i_K + i_L + I) / C
+  dmdt = (m_inf(v) - m) / tau_m(v)
+  dndt = (n_inf(v) - n) / tau_n(v)
+  dhdt = (h_inf(v) - h) / tau_h(v)
+  return [dvdt, dmdt, dndt, dhdt]
+
+# Initial conditions for Hodgkin-Huxley model
+v0 = -70
+m0 = m_inf(v0)
+n0 = n_inf(v0)
+h0 = h_inf(v0)
+x0 = [v0, m0, n0, h0]
+
+# Solve the Hodgkin-Huxley ODE
+sol_HH = odeint(spike_HH, x0, t_value)
+v_HH = sol_HH[:, 0]
+m = sol_HH[:, 1]
+n = sol_HH[:, 2]
+h = sol_HH[:, 3]
+
+# Plot
+plt.figure(figsize=(7, 3))
+
+# Plot v for both models
+plt.plot(t_value, h + n, 'k', label='HH Model, I = {} μA/cm^2'.format(I))
+plt.plot(t_value, 0.83 * np.ones_like(t_value) , 'b', linestyle = 'dashed' )
+plt.xlim(min(t_value), max(t_value))
+plt.ylim(0.7, 1)
+plt.xlabel('t [ms]')
+plt.ylabel(' h + n')
+
+plt.show()
