@@ -1,0 +1,151 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# Initialize constants and parameters
+t = 2000
+E_Na = 50
+E_K = -100
+E_L = -67
+g_Na = 100
+g_K = 80
+g_L = 0.1
+I = 0.12
+C = 1
+delta_t = 2**(-10)
+
+N = int(t / delta_t)
+t_values = np.linspace(0, t, N + 1)
+
+# Define Alpha and Beta functions
+def a_m(v):
+    return (0.32 * (v + 54)) / (1 - np.exp(-(v + 54) / 4))
+
+def a_n(v):
+    return (0.032 * (v + 52)) / (1 - np.exp(-(v + 52) / 5))
+
+def a_h(v):
+    return 0.128 * np.exp(-(v + 50) / 18)
+
+def b_m(v):
+    return (0.28 * (v + 27)) / (np.exp((v + 27) / 5) - 1)
+
+def b_n(v):
+    return 0.5 * np.exp(-(v + 57) / 40)
+
+def b_h(v):
+    return 4 / (1 + np.exp(-(v + 27) / 5))
+
+# Define limiting functions
+def m_inf(v):
+    return a_m(v) / (a_m(v) + b_m(v))
+
+def tau_m(v):
+    return 1 / (a_m(v) + b_m(v))
+
+def n_inf(v):
+    return a_n(v) / (a_n(v) + b_n(v))
+
+def tau_n(v):
+    return 1 / (a_n(v) + b_n(v))
+
+def h_inf(v):
+    return a_h(v) / (a_h(v) + b_h(v))
+
+def tau_h(v):
+    return 1 / (a_h(v) + b_h(v))
+
+# Define the Chemical Synapses model ODEs
+def spike(x, t, tau_r, tau_d, tau_dq):
+  v, n, h, s, q = x
+  i_Na = g_Na * m_inf(v)**3 * h * (E_Na - v)
+  i_K = g_K * n**4 * (E_K - v)
+  i_L = g_L * (E_L - v)
+  dvdt = (i_Na + i_K + i_L + I) / C
+  dndt = (n_inf(v) - n) / tau_n(v)
+  dhdt = (h_inf(v) - h) / tau_h(v)
+  dsdt = ((q * (1 - s))/(tau_r)) - (s / tau_d)
+  dqdt = ((1 + np.tanh(v/10))*(1 - q))/(2 * 0.1) - (q / tau_dq)
+  return [dvdt, dndt, dhdt, dsdt, dqdt]
+
+# Initial conditions for Chemical Synapses model
+def intitial(v0):
+  n0 = n_inf(v0)
+  h0 = h_inf(v0)
+  s0 = 0.
+  q0 = 0.
+  x0 = [v0, n0, h0, s0, q0]
+  return x0
+
+# Function to compute F_tau_peak
+def F_tau_peak(tau_dq, tau_r, tau_d):
+  def ODEs(x, t):
+      s = x[0]
+      dsdt = ((np.exp(-t/tau_dq) * (1 - s)) / tau_r) - (s / tau_d)
+      return [dsdt]
+
+  s0 = 0.0
+  x0 = [s0]
+
+  sol = odeint(ODEs, x0, t_values)
+  s = sol[:, 0]
+
+  t_max_index = np.argmax(s)
+  t_max = t_values[t_max_index]
+
+  return t_max
+
+# Function to compute tau_dq
+def F_tau_dq(tau_hat, tau_r, tau_d):
+  tau_dq_left = 1.0
+  while F_tau_peak(tau_dq_left, tau_r, tau_d) > tau_hat:
+      tau_dq_left *= 0.5
+
+  tau_dq_right = tau_r
+  while F_tau_peak(tau_dq_right, tau_r, tau_d) < tau_hat:
+      tau_dq_right *= 2.0
+
+  while tau_dq_right - tau_dq_left > 1e-12:
+      tau_dq_mid = 0.5 * (tau_dq_left + tau_dq_right)
+      if F_tau_peak(tau_dq_mid, tau_r, tau_d) <= tau_hat:
+          tau_dq_left = tau_dq_mid
+      else:
+          tau_dq_right = tau_dq_mid
+
+  return 0.5 * (tau_dq_left + tau_dq_right)
+
+tau_peak_values = (20., 150.)
+tau_r_values = (10., 100.)
+
+for i in range(2):
+  # Solve the Chemical Synapses model ODE
+  tau_d = 300.
+  tau_dq = F_tau_dq(tau_peak_values[i], tau_r_values[i], tau_d)
+  v0 = -70
+  x0 = intitial(v0)
+  sol = odeint(spike, x0, t_values, args=(tau_r_values[i], tau_d, tau_dq))
+  v = sol[:, 0]
+  s = sol[:, 3]
+
+  # Function to simulate and plot for given tau_peak and tau_r
+  plt.figure(figsize=(18, 5))
+
+  plt.subplot(2, 2, 1)
+  plt.plot(t_values, s, 'black')
+  plt.ylim(0, 1)
+  plt.xlim(500, 2000)
+  plt.xlabel('t [ms]')
+  plt.ylabel('s')
+  plt.title(r'$\tau_d = {} \ ms, \ \tau_r = {} \ ms, \ \tau_{{peak}} = {} \ ms$'.format(tau_d, tau_r[i], tau_peak_values[i]))
+
+  plt.subplot(2, 2, 2)
+  plt.plot(t_values, v, 'r', label='I = {} μA/cm²'.format(I))
+  plt.ylim(-100, 100)
+  plt.xlim(500, 2000)
+  plt.xlabel('t [ms]')
+  plt.ylabel('v [mv]')
+  plt.title('Voltage trace_RTM (v)')
+  plt.legend()
+
+  plt.tight_layout()
+  plt.show()
