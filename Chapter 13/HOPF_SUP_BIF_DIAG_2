@@ -1,0 +1,25 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+I = np.linspace(-1/4, 0, 101)
+I1 = np.linspace(0, 1, 101)
+
+plt.figure(figsize=(6, 6))
+plt.plot(I, np.sqrt(0.5 - np.sqrt(0.25 + I)), '--k', linewidth=2)
+plt.plot(I, -np.sqrt(0.5 - np.sqrt(0.25 + I)), '--k', linewidth=2)
+
+plt.plot(I, np.sqrt(0.5 + np.sqrt(0.25 + I)), '-k', linewidth=2)
+plt.plot(I, -np.sqrt(0.5 + np.sqrt(0.25 + I)), '-k', linewidth=2)
+
+plt.plot(I1, np.sqrt(0.5 + np.sqrt(0.25 + I1)), '-k', linewidth=2)
+plt.plot(I1, -np.sqrt(0.5 + np.sqrt(0.25 + I1)), '-k', linewidth=2)
+
+plt.plot(-I1, np.zeros_like(I1), '-k', linewidth=2)
+plt.plot(I1, np.zeros_like(I1), '--k', linewidth=2)
+
+
+
+plt.xlabel('$I$')
+plt.ylabel('oscillation amplitude')
+plt.axis([-1, 1, -2, 2])
+plt.show()
