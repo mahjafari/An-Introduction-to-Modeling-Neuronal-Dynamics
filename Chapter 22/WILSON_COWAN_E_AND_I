@@ -1,0 +1,67 @@
+import numpy as np
+from scipy.integrate import odeint
+
+# initialize:
+t = 300
+w_EE = 1.5
+w_IE = 1.
+w_EI = 1.
+w_II = 0.
+I_E = 20.
+I_I = 0.
+tau_E = 5.
+tau_I = 10.
+delta_t = 2**(-10)
+
+N = int(t/delta_t)
+
+E = np.zeros(N+1)
+I = np.zeros(N+1)
+t_value = np.linspace(0, t, N+1)
+
+
+# Define f & g:
+def f(x):
+  if x >= 0:
+    return (100 * x**2) / (30**2 + x**2)
+  else:
+    return 0
+
+def g(x):
+  if x >= 0:
+    return (100 * x**2) / (20**2 + x**2)
+  else:
+    return 0
+
+# Define the Wilson-Cowan model ODEs
+def spike(x, t):
+  E, I = x
+  dEdt = (f(w_EE*E - w_IE*I + I_E) - E) / tau_E
+  dIdt = (g(w_EI*E - w_II*I + I_I) - I) / tau_I
+  return [dEdt, dIdt]
+
+# Initial conditions for Wilson-Cowan model
+E0 = -70
+I0 = 0
+x0 = [E0, I0]
+
+# Solve the Wilson-Cowan model ODE
+sol = odeint(spike, x0, t_value)
+E = sol[:, 0]
+I = sol[:, 1]
+
+# Plot:
+import matplotlib.pyplot as plt
+
+# Plot v, s:
+plt.figure(figsize=(7, 2))
+
+# Plot E, I:
+plt.plot(t_value, I, 'b')
+plt.plot(t_value, E, 'r')
+plt.ylim(0, 100)
+plt.xlim(0, 300)
+plt.xlabel('t [ms]')
+plt.title('E(red) and I(blue)')
+
+plt.show()
