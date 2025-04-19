@@ -1,0 +1,71 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import autograd.numpy as anp  # Importing autograd.numpy for autograd compatibility
+
+# Parameters
+t = 50  # Total simulation time in ms
+E_Na = 50  # Sodium reversal potential in mV
+E_K = -100  # Potassium reversal potential in mV
+E_L = -67  # Leak reversal potential in mV
+g_Na = 100  # Sodium conductance in mS/cm^2
+g_K = 80  # Potassium conductance in mS/cm^2
+g_L = 0.1  # Leak conductance in mS/cm^2
+C = 1  # Membrane capacitance in µF/cm^2
+delta_t = 2**(-10)  # Time step
+N = int(t / delta_t)  # Number of time steps
+
+# Time vector
+t_values = np.linspace(0, t, N+1)
+
+# Define Alpha and Beta functions (using anp.exp for autograd compatibility)
+def a_m(v):
+  return (0.32 * (v + 54)) / (1 - anp.exp(-(v + 54) / 4))
+
+def b_m(v):
+  return (0.28 * (v + 27)) / (anp.exp((v + 27) / 5) - 1)
+
+def a_n(v):
+  return (0.032 * (v + 52)) / (1 - anp.exp(-(v + 52) / 5))
+
+def b_n(v):
+  return 0.5 * anp.exp(-(v + 57) / 40)
+
+# Steady-state functions
+def m_inf(v):
+  return a_m(v) / (a_m(v) + b_m(v))
+
+def n_inf(v):
+  return a_n(v) / (a_n(v) + b_n(v))
+
+# Function to calculate n_nullcline
+def calculate_n_nullcline(v_vec, I):
+  n_vec = np.zeros_like(v_vec)
+  for ij, v in enumerate(v_vec):
+      n_L, n_R = 0, 1  # Initial bounds for binary search
+      while n_R - n_L > 1e-10:  # Precision condition
+          n = (n_L + n_R) / 2
+          i_ion = (g_Na * m_inf(v)**3 * (1 - n) * (E_Na - v) +
+                    g_K * n**4 * (E_K - v) +
+                    g_L * (E_L - v) +
+                    I)
+          if i_ion < 0:
+              n_R = n
+          else:
+              n_L = n
+      n_vec[ij] = (n_L + n_R) / 2
+  return n_vec
+
+# Store fixed points for each I value
+v_vec = np.linspace(-100, 50, 2000)
+I_values = np.linspace(0, 0.2, 2000)  # Input current values
+v_fp = []
+
+for I in I_values:
+  diff = n_inf(v_vec) - calculate_n_nullcline(v_vec, I)
+  indices = np.where(np.diff(np.sign(diff)))[0]
+  v_intersections = v_vec[indices]
+  # Append as list, avoid direct conversion to NumPy array
+  v_fp.append(v_intersections)
+# print(v_fp)
+for i in range(len(v_fp)):
+  plt.scatter([I_values[i]] * len(v_fp[i]), v_fp[i])
