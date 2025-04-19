@@ -1,0 +1,71 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+from scipy.optimize import fsolve
+
+# Parameters
+t = 10
+delta_t = 2**(-7)  # Time step
+N = int(t / delta_t)  # Number of time steps
+I_values = [-0.1, 0.1]  # Negative and positive I
+
+# Time vector
+t_values = np.linspace(0, t, N+1)
+
+# Function defining the system of ODEs
+def ODE_1(x, t, I):
+  r, a = x
+  drdt = I * r - r**3
+  dadt = 1.
+  return [drdt, dadt]
+
+ODE_root_1 = lambda r, I: I * r - r**3
+
+# Coordinate transformation
+def x_transform(r, a):
+  return r * np.cos(a)
+
+def y_transform(r, a):
+  return r * np.sin(a)
+
+# Function to add arrows
+def add_arrows(ax, x_vals, y_vals, n_arrows=10, color='black'):
+  """ Adds arrows to a trajectory to indicate direction. """
+  arrow_indices = np.linspace(0, len(x_vals)-2, n_arrows, dtype=int)
+  for i in arrow_indices:
+      ax.annotate("", xy=(x_vals[i+1], y_vals[i+1]), xytext=(x_vals[i], y_vals[i]), arrowprops=dict(arrowstyle="->", color=color, lw=1.5))
+
+# Create figure
+fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+fig.suptitle("Comparison of ODE Solutions for Different I values and Initial Conditions", fontsize=14)
+
+for idx, I in enumerate(I_values):
+  # Find fixed points
+  r_root_1 = fsolve(ODE_root_1, [-1, 0, 1], args=(I,))
+  r_extra = max(r_root_1) + 0.1  # A value greater than the largest root
+
+  print(f'I = {I}, r_root_1 = {r_root_1}, extra_r = {r_extra}')
+
+  # Solve and plot ODE_1 for different r0 values
+  r0_values = [0.1] + list(r_root_1) + [r_extra]  # 0.1, equilibrium points, and an extra r0 > max root
+  for r0 in r0_values:
+    x0 = [r0, 0.0]  # Initial r and a
+    sol_1 = odeint(ODE_1, x0, t_values, args=(I,))
+    r_1, a_1 = sol_1[:, 0], sol_1[:, 1]
+
+    axes[idx].plot(x_transform(r_1, a_1), y_transform(r_1, a_1), label=f'$r_0$ = {r0:.2f}')
+    add_arrows(axes[idx], x_transform(r_1, a_1), y_transform(r_1, a_1), color='blue')
+
+  # Scatter equilibrium points and (0.1, 0)
+  axes[idx].scatter(x_transform(r_root_1, np.zeros_like(r_root_1)), y_transform(r_root_1, np.zeros_like(r_root_1)), color='black', zorder=5)
+  #axes[idx].scatter(x_transform([0.1], [0.0]), y_transform([0.1], [0.0]), color='red', marker='o', s=50, zorder=5)
+
+  axes[idx].set_title(f'ODE 1, I = {I}')
+  axes[idx].set_xlabel('$x$')
+  axes[idx].set_ylabel('$y$')
+  axes[idx].axis('equal')
+  axes[idx].legend()
+
+# Adjust layout for better spacing
+plt.tight_layout(rect=[0, 0, 1, 0.96])
+plt.show()
