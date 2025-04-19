@@ -1,0 +1,83 @@
+import autograd.numpy as anp
+from autograd import jacobian
+
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# Parameters
+t = 50  # Total simulation time in ms
+E_Na = 50  # Sodium reversal potential in mV
+E_K = -100  # Potassium reversal potential in mV
+E_L = -67  # Leak reversal potential in mV
+g_Na = 100  # Sodium conductance in mS/cm^2
+g_K = 80  # Potassium conductance in mS/cm^2
+g_L = 0.1  # Leak conductance in mS/cm^2
+C = 1  # Membrane capacitance in µF/cm^2
+delta_t = 2**(-10)  # Time step
+N = int(t / delta_t)  # Number of time steps
+
+# Time vector
+t_values = np.linspace(0, t, N+1)
+
+# Define Alpha and Beta functions (using anp.exp for autograd compatibility)
+def a_m(v):
+    return (0.32 * (v + 54)) / (1 - anp.exp(-(v + 54) / 4))
+
+def b_m(v):
+    return (0.28 * (v + 27)) / (anp.exp((v + 27) / 5) - 1)
+
+def a_n(v):
+    return (0.032 * (v + 52)) / (1 - anp.exp(-(v + 52) / 5))
+
+def b_n(v):
+    return 0.5 * anp.exp(-(v + 57) / 40)
+
+# Steady-state functions
+def m_inf(v):
+    return a_m(v) / (a_m(v) + b_m(v))
+
+def n_inf(v):
+    return a_n(v) / (a_n(v) + b_n(v))
+
+# Voltage range and n_nullcline
+v_vec = np.linspace(-100, 50, 500)
+n_nullcline = calculate_n_nullcline(v_vec, I=0)
+
+# Calculate intersections
+diff = n_inf(v_vec) - n_nullcline
+indices = np.where(np.diff(np.sign(diff)))[0]
+v_intersections = v_vec[indices]
+n_intersections = n_nullcline[indices]
+
+# Define function for autograd
+def spike_RTM_auto(x, t=0, I=0):
+    v, n = x  # Unpack state variables
+    dvdt = (1 / C) * (g_Na * m_inf(v)**3 * (1 - n) * (E_Na - v) +
+                      g_K * n**4 * (E_K - v) +
+                      g_L * (E_L - v) +
+                      I)
+    dndt = a_n(v) * (1 - n) - b_n(v) * n
+    return anp.array([dvdt, dndt])
+
+for i in range(3):
+  # Compute Jacobian
+  jacobian_func = jacobian(spike_RTM_auto)
+  J_auto = jacobian_func(anp.array([v_intersections[i], n_inf(v_intersections[i])]))
+
+  print(f'Jacobian_{i+1} =\n', J_auto)
+
+  tr = anp.trace(J_auto)
+  print(f'Trace_{i+1} =', tr)
+
+  det = np.linalg.det(J_auto)
+  print(f'Det_{i+1} =', det)
+
+  if det < 0:
+    print('The point is a saddle point.\n')
+
+  elif (tr**2 - 4*det) > 0 and det > 0:
+    if tr > 0:
+        print('The point is unstable.\n')
+    elif tr < 0:
+        print('The point is stable.\n')
