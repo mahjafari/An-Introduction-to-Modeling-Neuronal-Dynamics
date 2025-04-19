@@ -1,0 +1,165 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# Initialize constants:
+t = 100
+E_Na = 55
+E_K = -90
+E_L = -65
+g_Na = 35
+g_K = 9
+g_L = 0.1
+I1 = 1.
+I2 = 0.
+C = 1
+g_gap_initial = 0.01  # Initial value for g_gap
+delta_t = 2**(-10)
+
+N = int(t/delta_t)
+t_value = np.linspace(0, t, N+1)
+
+# Define Alpha functions:
+def a_m(v):
+    return ((v+35)/10) / (1 - np.exp(-(v+35)/10))
+
+def a_n(v):
+    return (0.05 * (v+34)) / (1 - np.exp(-(v+34)/10))
+
+def a_h(v):
+    return 0.35 * np.exp(-(v+58)/20)
+
+# Define Beta functions:
+def b_m(v):
+    return 4 * np.exp(-(v+60)/18)
+
+def b_n(v):
+    return 0.625 * np.exp(-(v+44)/80)
+
+def b_h(v):
+    return 5 / (1 + np.exp(-(v+28)/10))
+
+# Define Limiting Functions:
+def m_inf(v):
+    return a_m(v) / (a_m(v) + b_m(v))
+
+def tau_m(v):
+    return 1 / (a_m(v) + b_m(v))
+
+def n_inf(v):
+    return a_n(v) / (a_n(v) + b_n(v))
+
+def tau_n(v):
+    return 1 / (a_n(v) + b_n(v))
+
+def h_inf(v):
+    return a_h(v) / (a_h(v) + b_h(v))
+
+def tau_h(v):
+    return 1 / (a_h(v) + b_h(v))
+
+# WB neuron model function with dynamic g_gap control:
+def wb_neurons_dynamic(x, t):
+    v1, n1, h1, v2, n2, h2 = x
+
+    # Turn off gap-junction coupling if v1 > -50 mV
+    if v1 > -50:
+        g_gap = 0
+    else:
+        g_gap = g_gap_initial
+
+    # WB Neuron 1 dynamics
+    i_Na1 = g_Na * m_inf(v1)**3 * h1 * (E_Na - v1)
+    i_K1 = g_K * n1**4 * (E_K - v1)
+    i_L1 = g_L * (E_L - v1)
+    i_syn1 = 0.
+    dv1dt = (i_Na1 + i_K1 + i_L1 + I1 + i_syn1) / C
+    dn1dt = (n_inf(v1) - n1) / tau_n(v1)
+    dh1dt = (h_inf(v1) - h1) / tau_h(v1)
+
+    # WB Neuron 2 dynamics
+    i_Na2 = g_Na * m_inf(v2)**3 * h2 * (E_Na - v2)
+    i_K2 = g_K * n2**4 * (E_K - v2)
+    i_L2 = g_L * (E_L - v2)
+    i_syn2 = g_gap * (v1 - v2)
+    dv2dt = (i_Na2 + i_K2 + i_L2 + I2 + i_syn2) / C
+    dn2dt = (n_inf(v2) - n2) / tau_n(v2)
+    dh2dt = (h_inf(v2) - h2) / tau_h(v2)
+
+    return [dv1dt, dn1dt, dh1dt, dv2dt, dn2dt, dh2dt]
+
+# WB neuron model function with constant g_gap:
+def wb_neurons_constant(x, t):
+    v1, n1, h1, v2, n2, h2 = x
+
+    # Use constant gap-junction coupling (g_gap always on)
+    g_gap = g_gap_initial
+
+    # WB Neuron 1 dynamics
+    i_Na1 = g_Na * m_inf(v1)**3 * h1 * (E_Na - v1)
+    i_K1 = g_K * n1**4 * (E_K - v1)
+    i_L1 = g_L * (E_L - v1)
+    i_syn1 = 0.
+    dv1dt = (i_Na1 + i_K1 + i_L1 + I1 + i_syn1) / C
+    dn1dt = (n_inf(v1) - n1) / tau_n(v1)
+    dh1dt = (h_inf(v1) - h1) / tau_h(v1)
+
+    # WB Neuron 2 dynamics
+    i_Na2 = g_Na * m_inf(v2)**3 * h2 * (E_Na - v2)
+    i_K2 = g_K * n2**4 * (E_K - v2)
+    i_L2 = g_L * (E_L - v2)
+    i_syn2 = g_gap * (v1 - v2)
+    dv2dt = (i_Na2 + i_K2 + i_L2 + I2 + i_syn2) / C
+    dn2dt = (n_inf(v2) - n2) / tau_n(v2)
+    dh2dt = (h_inf(v2) - h2) / tau_h(v2)
+
+    return [dv1dt, dn1dt, dh1dt, dv2dt, dn2dt, dh2dt]
+
+# Initial conditions for the two WB neurons
+v1_0 = -63
+n1_0 = n_inf(v1_0)
+h1_0 = h_inf(v1_0)
+
+v2_0 = -63
+n2_0 = n_inf(v2_0)
+h2_0 = h_inf(v2_0)
+
+x0 = [v1_0, n1_0, h1_0, v2_0, n2_0, h2_0]
+
+# Solve the coupled ODEs for both conditions
+sol_dynamic = odeint(wb_neurons_dynamic, x0, t_value)
+sol_constant = odeint(wb_neurons_constant, x0, t_value)
+
+v1_dynamic = sol_dynamic[:, 0]
+v2_dynamic = sol_dynamic[:, 3]
+
+v1_constant = sol_constant[:, 0]
+v2_constant = sol_constant[:, 3]
+
+# Plot results for both conditions
+plt.figure(figsize=(15, 5))
+
+# Plot membrane voltage trace for neuron 1 (dynamic g_gap):
+plt.subplot(2, 2, 1)
+plt.plot(t_value, v1_dynamic, 'red', label = 'Dynamic')
+plt.plot(t_value, v1_constant, 'black', label = 'Constant')
+plt.ylim(-100, 50)
+plt.xlim(0, 100)
+plt.xlabel('t [ms]')
+plt.ylabel(r'$V_{1} [mV]$')
+plt.title('Neuron 1')
+plt.legend()
+
+# Plot membrane voltage trace for neuron 2 (dynamic g_gap):
+plt.subplot(2, 2, 2)
+plt.plot(t_value, v2_dynamic, 'red',  label = 'Dynamic')
+plt.plot(t_value, v2_constant, 'black', label = 'Constant')
+plt.ylim(-64, -61)
+plt.xlim(0, 100)
+plt.xlabel('t [ms]')
+plt.ylabel(r'$V_{2} [mV]$')
+plt.title('Neuron 2')
+plt.legend()
+
+plt.tight_layout()
+plt.show()
