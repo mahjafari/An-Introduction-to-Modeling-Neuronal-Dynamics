@@ -1,0 +1,130 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# Parameters
+t = 50  # Total simulation time in ms
+E_Na = 50  # Sodium reversal potential in mV
+E_K = -100  # Potassium reversal potential in mV
+E_L = -67  # Leak reversal potential in mV
+g_Na = 100  # Sodium conductance in mS/cm^2
+g_K = 80  # Potassium conductance in mS/cm^2
+g_L = 0.1  # Leak conductance in mS/cm^2
+C = 1  # Membrane capacitance in µF/cm^2
+delta_t = 2**(-10)  # Time step
+N = int(t / delta_t)  # Number of time steps
+
+# Time vector
+t_values = np.linspace(0, t, N+1)
+
+# Define Alpha and Beta functions
+def a_m(v):
+  return (0.32 * (v + 54)) / (1 - np.exp(-(v + 54) / 4))
+
+def b_m(v):
+  return (0.28 * (v + 27)) / (np.exp((v + 27) / 5) - 1)
+
+def a_n(v):
+  return (0.032 * (v + 52)) / (1 - np.exp(-(v + 52) / 5))
+
+def b_n(v):
+  return 0.5 * np.exp(-(v + 57) / 40)
+
+# Steady-state functions
+def m_inf(v):
+  return a_m(v) / (a_m(v) + b_m(v))
+
+def n_inf(v):
+  return a_n(v) / (a_n(v) + b_n(v))
+
+# Function to calculate n_nullcline
+def calculate_n_nullcline(v_vec, I):
+  n_vec = np.zeros_like(v_vec)
+  for ij, v in enumerate(v_vec):
+      n_L, n_R = 0, 1
+      while n_R - n_L > 1e-10:
+          n = (n_L + n_R) / 2
+          i_ion = (g_Na * m_inf(v)**3 * (1 - n) * (E_Na - v) +
+                    g_K * n**4 * (E_K - v) +
+                    g_L * (E_L - v) +
+                    I)
+          if i_ion < 0:
+              n_R = n
+          else:
+              n_L = n
+      n_vec[ij] = (n_L + n_R) / 2
+  return n_vec
+
+# Function defining the system of ODEs
+def spike_RTM(x, t, I):
+  v, n = x
+  dvdt = (1 / C) * (g_Na * m_inf(v)**3 * (1 - n) * (E_Na - v) +
+                    g_K * n**4 * (E_K - v) +
+                    g_L * (E_L - v) +
+                    I)
+  dndt = a_n(v) * (1 - n) - b_n(v) * n
+  return [dvdt, dndt]
+
+# Create a meshgrid for phase plane analysis
+v_range = np.linspace(-100, 50, 50)
+n_range = np.linspace(0, 0.8, 50)
+V, N = np.meshgrid(v_range, n_range)
+
+# Compute derivatives for streamplot
+def compute_derivatives(V, N, I):
+  dvdt = (1 / C) * (g_Na * m_inf(V)**3 * (1 - N) * (E_Na - V) +
+                    g_K * N**4 * (E_K - V) +
+                    g_L * (E_L - V) +
+                    I)
+  dndt = a_n(V) * (1 - N) - b_n(V) * N
+  return dvdt, dndt
+
+# Function to solve and plot for a given I
+def solve_and_plot(I):
+  # Voltage range and n_nullcline
+  v_vec = np.linspace(-100, 50, 500)
+  n_nullcline = calculate_n_nullcline(v_vec, I)
+
+  # Calculate intersections
+  diff = n_inf(v_vec) - n_nullcline
+  indices = np.where(np.diff(np.sign(diff)))[0]
+  v_intersections = v_vec[indices]
+  n_intersections = n_nullcline[indices]
+
+  # Initial conditions
+  v0 = -75.  # Default initial condition for v
+  n0 = n_inf(v0)  # Default initial condition for n
+  if len(v_intersections) > 1:  # If intersections exist, perturb around the second fixed point
+    v0 = v_intersections[1] + 0.5
+    n0 = n_inf(v0) + 0.005
+  x0 = [v0, n0]
+
+  # Solve the ODE
+  sol_RTM = odeint(spike_RTM, x0, t_values, args=(I,))
+  v = sol_RTM[:, 0]
+  n = sol_RTM[:, 1]
+
+  # Compute derivatives for streamplot
+  Vdot, Ndot = compute_derivatives(V, N, I)
+
+  # Plot results
+  plt.figure(figsize=(7, 5))
+  plt.plot(v, n, '-k', label='Trajectory')
+  plt.plot(v_vec, n_inf(v_vec), '-r', label='$n_{inf}$')
+  plt.plot(v_vec, n_nullcline, '-b', label='$n_{nullcline}$')
+  plt.streamplot(V, N, Vdot, Ndot, color='b', linewidth=1)
+  plt.scatter(v_intersections, n_intersections, color='green', label='Intersections', zorder=5)
+  plt.title(f'Phase Plane for I = {I}')
+  plt.xlabel('$v$ [mV]')
+  plt.ylabel('$n$')
+  plt.axis([-100, 50, 0, 0.8])
+  plt.legend()
+
+
+  print(f"Fixed points for I = {I}:")
+  print("V intersections:", v_intersections)
+  print("N intersections:", n_intersections)
+
+for i in [0., 1.]:
+  solve_and_plot(i)
+  plt.show()
