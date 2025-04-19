@@ -1,0 +1,33 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Set I values
+I_values = [-1, 0, 1]
+
+# Create a grid for X and Y
+x = np.linspace(-3, 3, 10)
+y = np.linspace(-3, 3, 10)
+X, Y = np.meshgrid(x, y)
+
+# Loop over each I value to create phase plots
+for I in I_values:
+    if I <= 0 :
+        fixed_points = np.array([[np.sqrt(-I), 0.], [-np.sqrt(-I), 0.]])
+    else:
+        fixed_points = np.array([])  # No real fixed points for negative I
+
+    # Define the derivatives
+    Xdot = X**2 + I
+    Ydot = -5 * Y
+
+    # Plotting
+    fig, ax = plt.subplots()
+    ax.streamplot(X, Y, Xdot, Ydot)
+    if fixed_points.size > 0:
+        ax.scatter(*fixed_points.T, color="r")
+    ax.set_xlim([-3, 3])
+    ax.set_ylim([-3, 3])
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_title(f"Phase Plot with Fixed Points (I = {I})")
+    plt.show()
