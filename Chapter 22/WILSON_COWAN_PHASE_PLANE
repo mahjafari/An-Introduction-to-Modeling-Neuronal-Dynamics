@@ -1,0 +1,101 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# Initialize parameters
+t = 300
+w_EE = 1.5
+w_IE = 1.0
+w_EI = 1.0
+w_II = 0.0
+I_E = 20.0
+I_I = 0.0
+tau_E = 5.0
+tau_I = 10.0
+delta_t = 2**(-10)
+
+N = int(t / delta_t)
+t_value = np.linspace(0, t, N+1)
+
+# Define activation functions
+def f(x):
+    return np.where(x >= 0, (100 * x**2) / (30**2 + x**2), 0)
+
+def g(x):
+    return np.where(x >= 0, (100 * x**2) / (20**2 + x**2), 0)
+
+# Define the Wilson-Cowan model ODEs
+def spike(x, t):
+    E, I = x
+    dEdt = (f(w_EE * E - w_IE * I + I_E) - E) / tau_E
+    dIdt = (g(w_EI * E - w_II * I + I_I) - I) / tau_I
+    return [dEdt, dIdt]
+
+# Initial conditions
+E0 = 50.0
+I0 = 10.0
+x0 = [E0, I0]
+
+# Solve the Wilson-Cowan model ODE
+sol = odeint(spike, x0, t_value)
+E = sol[:, 0]
+I = sol[:, 1]
+
+# Define nullcline functions
+def dE_nullcline(E, I):
+    return f(w_EE * E - w_IE * I + I_E) - E
+
+def dI_nullcline(E, I):
+    return g(w_EI * E - w_II * I + I_I) - I
+
+# Define the nullcline plotting function
+def plot_nullcline(f, ax, label=None, color="r"):
+    E_range = np.linspace(0, 100, 1000)  # Voltage range for E
+    I_left = np.arange(0, 100, 0.1)
+    I_right = np.arange(0.1, 100 + 0.1, 0.1)
+
+    E_red = []
+    I_red = []
+
+    # Bisection method to find the nullcline
+    for E in E_range:
+        I_L = 0
+        I_R = 100
+
+        # Binary search to find the intersection
+        while I_R - I_L > 1e-10:
+            I_c = 0.5 * (I_R + I_L)
+            f_value = f(E, I_c)
+
+            if f_value < 0:  # Zero crossing
+                I_R = I_c
+            else:
+                I_L = I_c
+
+        I_c = 0.5 * (I_R + I_L)
+        E_red.append(E)
+        I_red.append(I_c)
+
+    plt.plot(E_red, I_red, lw=2, c=color, ls="--", label=label)
+    if label:
+        plt.legend()
+
+# Plot E-I phase space
+plt.figure(figsize=(6, 6))
+
+# Plot nullclines
+plot_nullcline(lambda E, I: dE_nullcline(E, I), plt, label="dE/dt=0", color="red")
+plot_nullcline(lambda E, I: dI_nullcline(E, I), plt, label="dI/dt=0", color="blue")
+
+# Plot trajectory
+plt.plot(E, I, color="black", label="Trajectory")
+
+# Customize plot
+plt.ylim(0, 100)
+plt.xlim(0, 100)
+plt.xlabel('E')
+plt.ylabel('I')
+plt.title('E-I Phase Space with Nullclines')
+plt.legend()
+
+plt.show()
