@@ -1,0 +1,98 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# Initialize constants:
+t = 100
+E_Na = 55
+E_K = -90
+E_L = -65
+g_Na = 35
+g_K = 9
+I = 0.75
+delta_t = 2**(-10)
+
+N = int(t/delta_t)
+t_value = np.linspace(0, t, N+1)
+
+# Define Alpha functions:
+def a_m(v):
+    return ((v+35)/10) / (1 - np.exp(-(v+35)/10))
+
+def a_n(v):
+    return (0.05 * (v+34)) / (1 - np.exp(-(v+34)/10))
+
+def a_h(v):
+    return 0.35 * np.exp(-(v+58)/20)
+
+# Define Beta functions:
+def b_m(v):
+    return 4 * np.exp(-(v+60)/18)
+
+def b_n(v):
+    return 0.625 * np.exp(-(v+44)/80)
+
+def b_h(v):
+    return 5 / (1 + np.exp(-(v+28)/10))
+
+# Define Limiting Functions:
+def m_inf(v):
+    return a_m(v) / (a_m(v) + b_m(v))
+
+def tau_m(v):
+    return 1 / (a_m(v) + b_m(v))
+
+def n_inf(v):
+    return a_n(v) / (a_n(v) + b_n(v))
+
+def tau_n(v):
+    return 1 / (a_n(v) + b_n(v))
+
+def h_inf(v):
+    return a_h(v) / (a_h(v) + b_h(v))
+
+def tau_h(v):
+    return 1 / (a_h(v) + b_h(v))
+
+# Define the Chemical Synapses model ODEs
+def spike(x, t):
+  v, n, h= x
+  i_Na = g_Na * m_inf(v)**3 * h * (E_Na - v)
+  i_K = g_K * n**4 * (E_K - v)
+  i_L = g_L * (E_L - v)
+  dvdt = (i_Na + i_K + i_L + I) / C
+  dndt = (n_inf(v) - n) / tau_n(v)
+  dhdt = (h_inf(v) - h) / tau_h(v)
+  return [dvdt, dndt, dhdt]
+
+# Initial conditions for Chemical Synapses model
+v0 = -63
+n0 = n_inf(v0)
+h0 = h_inf(v0)
+x0 = [v0, n0, h0]
+
+# Solve the Chemical Synapses model ODE
+sol = odeint(spike, x0, t_value)
+v = sol[:, 0]
+
+L1 = np.full(len(t_value), -57)
+L2 = np.full(len(t_value), -67)
+
+# Plot:
+import matplotlib.pyplot as plt
+
+# Plot v, m, n, h:
+plt.figure(figsize=(7, 3))
+
+# Plot v:
+plt.plot(t_value, v, 'black')
+plt.plot(t_value, L1, 'b', linestyle = 'dashed')
+plt.plot(t_value, L2, 'b', linestyle = 'dashed')
+plt.xlabel('t [ms]')
+plt.ylabel('v [mv]')
+plt.ylim(-100, 50)
+plt.xlim(0, 100)
+plt.title('Voltage_WB (v)')
+
+plt.tight_layout()
+plt.show()
