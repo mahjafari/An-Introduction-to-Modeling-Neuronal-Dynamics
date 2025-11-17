@@ -1,0 +1,309 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# ----------------------------
+# Parameters
+# ----------------------------
+t_final = 200.0
+E_Na = 50.0
+E_K = -100.0
+E_L = -67.0
+g_Na = 100.0
+g_K = 80.0
+g_L = 0.1
+C = 1.0
+I_ext = 0.3
+tau_d = 2.0
+tau_r = 0.5
+tau_peak = 0.5
+g_syn = 0.0075
+v_rev = 0.0
+v0 = -70.0
+
+# time step and grid for odeint
+delta_t = 2**(-7)         
+N_steps = int(np.round(t_final / delta_t))
+t_values = np.linspace(0.0, t_final, N_steps + 1)
+
+# ----------------------------
+# Hodgkin-Huxley-like rate functions
+# ----------------------------
+def a_m(v):
+    return (0.32 * (v + 54.0)) / (1.0 - np.exp(-(v + 54.0) / 4.0))
+
+def a_n(v):
+    return (0.032 * (v + 52.0)) / (1.0 - np.exp(-(v + 52.0) / 5.0))
+
+def a_h(v):
+    return 0.128 * np.exp(-(v + 50.0) / 18.0)
+
+def b_m(v):
+    return (0.28 * (v + 27.0)) / (np.exp((v + 27.0) / 5.0) - 1.0)
+
+def b_n(v):
+    return 0.5 * np.exp(-(v + 57.0) / 40.0)
+
+def b_h(v):
+    return 4.0 / (1.0 + np.exp(-(v + 27.0) / 5.0))
+
+def m_inf(v):
+    return a_m(v) / (a_m(v) + b_m(v))
+
+def n_inf(v):
+    return a_n(v) / (a_n(v) + b_n(v))
+
+def h_inf(v):
+    return a_h(v) / (a_h(v) + b_h(v))
+
+
+# ----------------------------
+# Functions to compute tau_dq (translated from your approach)
+# ----------------------------
+def F_tau_peak(tau_dq_local, tau_r_local, tau_d_local):
+    """
+    Integrate ds/dt = exp(-t/tau_dq)*(1-s)/tau_r - s/tau_d
+    and return t of maximum s (approximate peak time).
+    We integrate on the same grid t_values (0..t_final) which is fine for the root-finding step.
+    """
+    def ODEs_s(x, t):
+        s = x[0]
+        dsdt = (np.exp(-t / tau_dq_local) * (1.0 - s)) / tau_r_local - s / tau_d_local
+        return [dsdt]
+
+    s0 = [0.0]
+    sol = odeint(ODEs_s, s0, t_values)
+    s = sol[:, 0]
+    idx_max = np.argmax(s)
+    return t_values[idx_max]
+
+
+def F_tau_dq(tau_hat, tau_r_local, tau_d_local):
+    left = 1.0
+    # widen left until peak <= tau_hat
+    while F_tau_peak(left, tau_r_local, tau_d_local) > tau_hat:
+        left *= 0.5
+    right = tau_r_local
+    # widen right until peak >= tau_hat
+    while F_tau_peak(right, tau_r_local, tau_d_local) < tau_hat:
+        right *= 2.0
+    # bisection
+    while right - left > 1e-12:
+        mid = 0.5 * (left + right)
+        if F_tau_peak(mid, tau_r_local, tau_d_local) <= tau_hat:
+            left = mid
+        else:
+            right = mid
+    return 0.5 * (left + right)
+
+
+# compute tau_dq to use in network ODE
+tau_dq = F_tau_dq(tau_peak, tau_r, tau_d)
+
+
+# ----------------------------
+# rtm_init: sample the single-neuron limit cycle and return (v,h,n) at phases phi_vec
+# (translated from your MATLAB rtm_init)
+# ----------------------------
+def rtm_init(i_ext_single, phi_vec):
+    # single-neuron params
+    c = 1.0
+    g_k_local = 80.0
+    g_na_local = 100.0
+    g_l_local = 0.1
+    v_k = -100.0
+    v_na = 50.0
+    v_l = -67.0
+
+    t_final_local = 5000.0      # ms (same as MATLAB)
+    dt = 2**(-10)
+    dt05 = dt / 2.0
+    m_steps_local = int(np.round(t_final_local / dt))
+
+    # preallocate arrays
+    v = np.zeros(m_steps_local + 1)
+    m = np.zeros_like(v)
+    h = np.zeros_like(v)
+    n = np.zeros_like(v)
+
+    # initial rest
+    v[0] = -70.0
+    m[0] = m_inf(v[0])
+    h[0] = h_inf(v[0])
+    n[0] = n_inf(v[0])
+
+    t = 0.0
+    num_spikes = 0
+    t_spikes = []
+    k = 0
+
+    # integrate until we capture 5 spikes or reach t_final_local
+    while num_spikes < 5 and t < t_final_local and (k + 1) < len(v):
+        v_inc = (g_k_local * n[k]**4 * (v_k - v[k]) +
+                 g_na_local * m[k]**3 * h[k] * (v_na - v[k]) +
+                 g_l_local * (v_l - v[k]) + i_ext_single) / c
+        h_inc = a_h(v[k]) * (1.0 - h[k]) - b_h(v[k]) * h[k]
+        n_inc = a_n(v[k]) * (1.0 - n[k]) - b_n(v[k]) * n[k]
+
+        # half-step
+        v_tmp = v[k] + dt05 * v_inc
+        m_tmp = m_inf(v_tmp)
+        h_tmp = h[k] + dt05 * h_inc
+        n_tmp = n[k] + dt05 * n_inc
+
+        # full-step increments at tmp
+        v_inc = (g_k_local * n_tmp**4 * (v_k - v_tmp) +
+                 g_na_local * m_tmp**3 * h_tmp * (v_na - v_tmp) +
+                 g_l_local * (v_l - v_tmp) + i_ext_single) / c
+        h_inc = a_h(v_tmp) * (1.0 - h_tmp) - b_h(v_tmp) * h_tmp
+        n_inc = a_n(v_tmp) * (1.0 - n_tmp) - b_n(v_tmp) * n_tmp
+
+        # update
+        v[k + 1] = v[k] + dt * v_inc
+        m[k + 1] = m_inf(v[k + 1])
+        h[k + 1] = h[k] + dt * h_inc
+        n[k + 1] = n[k] + dt * n_inc
+
+        # detect downward crossing through -20 mV (MATLAB's criterion)
+        if v[k] >= -20.0 and v[k + 1] < -20.0:
+            num_spikes += 1
+            # linear interpolation to estimate crossing time (same idea as MATLAB)
+            t_cross = ((k - 1) * dt * (-20.0 - v[k + 1]) + k * dt * (20.0 + v[k])) / (v[k] - v[k + 1])
+            t_spikes.append(t_cross)
+
+        t = (k + 1) * dt
+        k += 1
+
+    # build output for requested phases
+    num_cells = len(phi_vec)
+    rtm_init_vals = np.zeros((num_cells, 3))
+
+    if num_spikes < 5:
+        # fallback to last computed state if not enough spikes
+        # use index k (current last)
+        idx = min(k, len(v) - 1)
+        rtm_init_vals[:, 0] = v[idx]
+        rtm_init_vals[:, 1] = h[idx]
+        rtm_init_vals[:, 2] = n[idx]
+    else:
+        # period from last two spikes (MATLAB used 4 and 5)
+        T = t_spikes[4] - t_spikes[3]
+        for i, phi0 in enumerate(phi_vec):
+            t0 = phi0 * T + t_spikes[3]
+            # convert to array index
+            k0 = int(np.floor(t0 / dt))
+            if k0 < 0:
+                k0 = 0
+            if k0 + 1 >= len(v):
+                k0 = len(v) - 2
+            frac = (t0 - k0 * dt) / dt
+            rtm_init_vals[i, 0] = v[k0] * (1.0 - frac) + v[k0 + 1] * frac
+            rtm_init_vals[i, 1] = h[k0] * (1.0 - frac) + h[k0 + 1] * frac
+            rtm_init_vals[i, 2] = n[k0] * (1.0 - frac) + n[k0 + 1] * frac
+
+    return rtm_init_vals
+
+
+# ----------------------------
+# System ODE for the whole network
+# state vector x layout: [v(0..N-1), n(0..N-1), h(0..N-1), s(0..N-1), q(0..N-1)]
+# ----------------------------
+def network_odes(x, t, tau_r_local, tau_d_local, tau_dq_local, Ncells):
+    v = x[0:Ncells]
+    n = x[Ncells:2 * Ncells]
+    h = x[2 * Ncells:3 * Ncells]
+    s = x[3 * Ncells:4 * Ncells]
+    q = x[4 * Ncells:5 * Ncells]
+
+    dvdt = np.zeros(Ncells)
+    dndt = np.zeros(Ncells)
+    dhdt = np.zeros(Ncells)
+    dsdt = np.zeros(Ncells)
+    dqdt = np.zeros(Ncells)
+
+    # synaptic current: NOTE the minus sign (inhibitory sign in original form)
+    i_syn = -g_syn * (np.sum(s) - s) * v
+
+    for i in range(Ncells):
+        i_Na = g_Na * (m_inf(v[i]) ** 3) * h[i] * (E_Na - v[i])
+        i_K = g_K * (n[i] ** 4) * (E_K - v[i])
+        i_L = g_L * (E_L - v[i])
+
+        dvdt[i] = (i_Na + i_K + i_L + i_syn[i] + I_ext) / C
+        dndt[i] = a_n(v[i]) * (1.0 - n[i]) - b_n(v[i]) * n[i]
+        dhdt[i] = a_h(v[i]) * (1.0 - h[i]) - b_h(v[i]) * h[i]
+        dsdt[i] = (q[i] * (1.0 - s[i])) / tau_r_local - s[i] / tau_d_local
+        # q dynamics scaling fixed to MATLAB form: 5*(1+tanh(v/10))*(1-q) - q/tau_dq
+        dqdt[i] = 5.0 * (1.0 + np.tanh(v[i] / 10.0)) * (1.0 - q[i]) - q[i] / tau_dq_local
+
+    return np.concatenate([dvdt, dndt, dhdt, dsdt, dqdt])
+
+
+# ----------------------------
+# Build initial conditions using rtm_init (splay-state)
+# ----------------------------
+N_cells = 30
+# phi vector as in MATLAB: (N-1:-1:0)'/N + 1/(2N)
+phi_vec = np.arange(N_cells - 1, -1, -1) / float(N_cells) + 1.0 / (2.0 * N_cells)
+
+# get (v,h,n) for every neuron placed on the limit cycle with phases phi_vec
+init_vals = rtm_init(I_ext, phi_vec)
+v_init = init_vals[:, 0]
+h_init = init_vals[:, 1]
+n_init = init_vals[:, 2]
+s_init = np.zeros(N_cells)
+q_init = np.zeros(N_cells)
+
+# full initial state vector for odeint
+x0 = np.concatenate([v_init, n_init, h_init, s_init, q_init])
+
+# integrate whole-network ODEs
+sol = odeint(network_odes, x0, t_values, args=(tau_r, tau_d, tau_dq, N_cells))
+
+# extract voltage traces
+v_traces = sol[:, 0:N_cells]   # shape (time, neuron)
+
+# ----------------------------
+# Spike detection by threshold crossing at -20 mV (downward crossing)
+# with linear interpolation for crossing time
+# ----------------------------
+SPIKE = [[] for _ in range(N_cells)]
+for j in range(N_cells):
+    v_j = v_traces[:, j]
+    for i in range(1, len(v_j)):
+        v_prev = v_j[i - 1]
+        v_curr = v_j[i]
+        if (v_prev >= -20.0) and (v_curr < -20.0):
+            t_prev = t_values[i - 1]
+            t_curr = t_values[i]
+            # linear interpolation to estimate crossing time
+            if v_curr != v_prev:
+                t_cross = t_prev + ( -20.0 - v_prev ) * (t_curr - t_prev) / (v_curr - v_prev)
+            else:
+                t_cross = t_prev
+            SPIKE[j].append(t_cross)
+
+# Compute mean periods per neuron (if possible) and overall T
+periods = []
+for sp in SPIKE:
+    if len(sp) > 1:
+        intervals = np.diff(sp)
+        periods.append(np.mean(intervals))
+T_mean = np.mean(periods) if len(periods) > 0 else np.nan
+
+print(f"Estimated mean period (ms): {T_mean}")
+
+# ----------------------------
+# Raster plot (splay-state)
+# ----------------------------
+plt.figure(figsize=(9, 6))
+for neuron_idx, spike_times in enumerate(SPIKE):
+    if len(spike_times) > 0:
+        plt.scatter(spike_times, [neuron_idx] * len(spike_times), color='r', s=8)
+
+plt.xlim([0, t_final])
+plt.ylim([-1, N_cells + 1])
+plt.xlabel('t [ms]', fontsize=14)
+plt.ylabel('neuron #', fontsize=14)
+plt.title('Network raster (splay state)', fontsize=14)
+plt.show()
