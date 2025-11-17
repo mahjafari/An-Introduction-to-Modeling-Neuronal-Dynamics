@@ -1,0 +1,112 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib.pyplot as plt
+
+# Initialize parameters
+t = 200
+E_Na = 50
+E_K = -100
+E_L = -67
+g_Na = 100
+g_K = 80
+g_L = 0.1
+I = 0.3
+C = 1
+delta_t = 2**(-10)
+
+N = int(t / delta_t)
+
+v = np.zeros(N+1)
+n = np.zeros(N+1)
+h = np.zeros(N+1)
+t_values = np.linspace(0, t, N+1)
+
+# Define Alpha functions
+def a_m(v):
+    return (0.32 * (v + 54)) / (1 - np.exp(-(v + 54) / 4))
+
+def a_n(v):
+    return (0.032 * (v + 52)) / (1 - np.exp(-(v + 52) / 5))
+
+def a_h(v):
+    return 0.128 * np.exp(-(v + 50) / 18)
+
+# Define Beta functions
+def b_m(v):
+    return (0.28 * (v + 27)) / (np.exp((v + 27) / 5) - 1)
+
+def b_n(v):
+    return 0.5 * np.exp(-(v + 57) / 40)
+
+def b_h(v):
+    return 4 / (1 + np.exp(-(v + 27) / 5))
+
+# Define limiting functions
+def m_inf(v):
+    return a_m(v) / (a_m(v) + b_m(v))
+
+def n_inf(v):
+    return a_n(v) / (a_n(v) + b_n(v))
+
+def h_inf(v):
+    return a_h(v) / (a_h(v) + b_h(v))
+
+# Define the ODE system
+def spike_RTM(x, t):
+    v, n, h = x
+    dvdt = (1 / C) * (g_Na * (m_inf(v)**3) * h * (E_Na - v) + g_K * n**4 * (E_K - v) + g_L * (E_L - v) + I)
+    dndt = (a_n(v) * (1 - n)) - (b_n(v) * n)
+    dhdt = (a_h(v) * (1 - h)) - (b_h(v) * h)
+    return [dvdt, dndt, dhdt]
+
+# Initial conditions
+v0 = -70  # Initial membrane potential
+n0 = n_inf(v0)
+h0 = h_inf(v0)
+x0 = [v0, n0, h0]
+
+# Solve the RTM ODE
+sol_RTM = odeint(spike_RTM, x0, t_values)
+v = sol_RTM[:, 0]
+
+# Spike detection
+n = 30  # Number of neurons in the network
+SPIKE = []
+
+for j in range(n):
+    spike_times = []  # Store spike times for each neuron
+    for i in range(1, len(v) - 1):  # Loop through the voltage array
+        if v[i-1] >= -20 and v[i] < -20:  # Check for local maxima
+            spike_times.append(t_values[i])  # Record the time of the spike
+    SPIKE.append(spike_times)
+
+# Calculate the mean period T from all neurons
+periods = []  # Store the period (average interspike interval) for each neuron
+
+for spike_times in SPIKE:
+    if len(spike_times) > 1:
+        intervals = np.diff(spike_times)  # Time differences between consecutive spikes
+        period = np.mean(intervals)  # Average interspike interval
+        periods.append(period)
+
+T = np.mean(periods) if periods else t  # Use the mean period or a default value
+
+# Plot spikes in splay state
+plt.figure(figsize=(10, 6))
+
+for neuron_idx in range(n):
+    # Calculate splay state spike times
+    splay_spike_times = []
+    for k in range(int(200 / T) + 1):  # Generate spike times within total time
+        splay_time = ((neuron_idx - 0.5) / n) * T + k * T
+        if splay_time < t:  # Ensure spike times are within the simulation duration
+            splay_spike_times.append(splay_time)
+
+    # Plot adjusted spike times
+    plt.scatter(splay_spike_times, [neuron_idx + 1] * len(splay_spike_times), color='k', s=10)  # Plot spikes as dots
+
+plt.xlabel('Time [ms]')
+plt.ylabel('Neuron Index')
+plt.title('Thirty RTM neurons firing in splay state.')
+plt.axis([0, 200, 0, n+1])
+plt.show()
