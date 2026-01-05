@@ -1,0 +1,164 @@
+import numpy as np
+from scipy.integrate import odeint
+import matplotlib as plt
+
+# initialize:
+t = 400
+E_Na = 50
+E_K = -100
+E_L = -67
+g_Na = 100
+g_K = 80
+g_L = 0.1
+c = 1
+I = 0.5
+U = 0.5
+C = 1.45
+tau_d = 9.
+tau_r = 3.
+tau_dq = 5. 
+tau_rec = 300
+tau_facil = 500
+U_0 = 0.1
+u = 0.2
+w_0 = np.log(1 / (1 - U_0))
+y = np.log(1 / (1 - u))
+delta_t = 2**(-10)
+
+N = int(t/delta_t)
+
+v = np.zeros(N+1)
+n = np.zeros(N+1)
+h = np.zeros(N+1)
+p = np.zeros(N+1)
+q = np.zeros(N+1)
+s = np.zeros(N+1)
+w = np.zeros(N+1)
+t_value = np.linspace(0, t, N+1)
+
+
+# Define Alpha:
+def a_m(v):
+  return (0.32*(v+54)) / (1 - np.exp(-(v+54)/4))
+
+def a_n(v):
+  return (0.032*(v+52)) / (1 - np.exp(-(v+52)/5))
+
+def a_h(v):
+  return 0.128 * np.exp(-(v+50)/18)
+
+
+# Define Beta:
+def b_m(v):
+  return (0.28*(v+27)) / (np.exp((v+27)/5)-1)
+
+def b_n(v):
+  return 0.5 * np.exp(-(v+57)/40)
+
+def b_h(v):
+  return 4 / (1 + np.exp(-(v+27)/5))
+
+# Define Lmiting Functions:
+def m_inf(v):
+      return a_m(v) / (a_m(v) + b_m(v))
+
+def tau_m(v):
+  return 1 / (a_m(v) + b_m(v))
+
+def n_inf(v):
+  return a_n(v) / (a_n(v) + b_n(v))
+
+def tau_n(v):
+  return 1 / (a_n(v) + b_n(v))
+
+def h_inf(v):
+  return a_h(v) / (a_h(v) + b_h(v))
+
+def tau_h(v):
+  return 1 / (a_h(v) + b_h(v))
+
+# Define the Chemical Synapses model ODEs
+def spike(x, t):
+  v, n, h, p, q, s, w = x
+  i_Na = g_Na * m_inf(v)**3 * h * (E_Na - v)
+  i_K = g_K * n**4 * (E_K - v)
+  i_L = g_L * (E_L - v)
+  dvdt = (i_Na + i_K + i_L + I) / c
+  dndt = (n_inf(v) - n) / tau_n(v)
+  dhdt = (h_inf(v) - h) / tau_h(v)
+  dpdt = ((1 - p - q) / tau_rec) - (C * (1 + np.tanh(v / 10)) * p * w)
+  dqdt = ((- q) / tau_dq) + (C * (1 + np.tanh(v / 10)) * p * w)
+  dsdt = (q * (1 - s) / tau_r) - (s / tau_d)
+  dwdt = (-(np.exp(w - w_0) - 1) / tau_facil) + (C * y * (1 + np.tanh(v / 10)))
+  return [dvdt, dndt, dhdt, dpdt, dqdt, dsdt, dwdt]
+
+# Initial conditions for Chemical Synapses model
+v0 = -70
+n0 = n_inf(v0)
+h0 = h_inf(v0)
+p0 = 1.
+q0 = 0.
+s0 = 0.
+w0 = w_0
+x0 = [v0, n0, h0, p0, q0, s0, w0]
+
+# Solve the Chemical Synapses model ODE
+sol = odeint(spike, x0, t_value)
+v = sol[:, 0]
+n = sol[:, 1]
+h = sol[:, 2]
+p = sol[:, 3]
+q = sol[:, 4]
+s = sol[:, 5]
+w = sol[:, 6]
+
+U = 1 - np.exp(-w)
+
+# Plot:
+import matplotlib.pyplot as plt
+
+# Plot v, q:
+plt.figure(figsize=(18, 5))
+
+# Plot v:
+plt.subplot(2, 3, 1)
+plt.plot(t_value, v, 'black')
+plt.ylim(-100, 50)
+plt.xlim(0, t)
+plt.xlabel('t [ms]')
+plt.ylabel('v [mv]')
+
+# Plot p:
+plt.subplot(2, 3, 2)
+plt.plot(t_value, p, 'black')
+plt.ylim(0, 1.01)
+plt.xlim(0, t)
+plt.xlabel('t [ms]')
+plt.ylabel('p')
+
+# Plot q:
+plt.subplot(2, 3, 4)
+plt.plot(t_value, q, 'black')
+plt.ylim(0, 0.3)
+plt.xlim(0, t)
+plt.xlabel('t [ms]')
+plt.ylabel('q')
+
+# Plot s:
+plt.subplot(2, 3, 5)
+plt.plot(t_value, s, 'black')
+plt.ylim(0, 0.22)
+plt.xlim(0, t)
+plt.xlabel('t [ms]')
+plt.ylabel('s')
+
+# Plot U:
+plt.subplot(2, 3, 6)
+plt.plot(t_value, U, 'black')
+plt.ylim(0, 1)
+plt.xlim(0, t)
+plt.xlabel('t [ms]')
+plt.ylabel('U')
+
+plt.tight_layout()
+plt.show()
