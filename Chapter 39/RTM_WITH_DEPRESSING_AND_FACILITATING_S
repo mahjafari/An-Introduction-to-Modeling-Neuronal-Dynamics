@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.integrate import odeint
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 # initialize:
 t = 400
@@ -114,10 +114,7 @@ w = sol[:, 6]
 
 U = 1 - np.exp(-w)
 
-# Plot:
-import matplotlib.pyplot as plt
-
-# Plot v, q:
+# Plot v, p, q, s, U:
 plt.figure(figsize=(18, 5))
 
 # Plot v:
