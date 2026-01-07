@@ -103,10 +103,7 @@ p = sol[:, 3]
 q = sol[:, 4]
 s = sol[:, 5]
 
-# Plot:
-import matplotlib.pyplot as plt
-
-# Plot v, q:
+# Plot v, p, q, s:
 plt.figure(figsize=(18, 5))
 
 # Plot v:
