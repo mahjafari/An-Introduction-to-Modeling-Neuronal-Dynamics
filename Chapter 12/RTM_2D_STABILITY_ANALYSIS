@@ -41,6 +41,22 @@ def n_inf(v):
     return a_n(v) / (a_n(v) + b_n(v))
 
 # Voltage range and n_nullcline
+def calculate_n_nullcline(v_vec, I):
+  n_vec = np.zeros_like(v_vec)
+  for ij, v in enumerate(v_vec):
+      n_L, n_R = 0, 1  # Initial bounds for binary search
+      while n_R - n_L > 1e-10:  # Precision condition
+          n = (n_L + n_R) / 2
+          i_ion = (g_Na * m_inf(v)**3 * (1 - n) * (E_Na - v) +
+                    g_K * n**4 * (E_K - v) +
+                    g_L * (E_L - v) +
+                    I)
+          if i_ion < 0:
+              n_R = n
+          else:
+              n_L = n
+      n_vec[ij] = (n_L + n_R) / 2
+  return n_vec
 v_vec = np.linspace(-100, 50, 500)
 n_nullcline = calculate_n_nullcline(v_vec, I=0)
 
