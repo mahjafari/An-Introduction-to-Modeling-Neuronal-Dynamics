@@ -1,0 +1,27 @@
+"""
+Chapter 20 - Synapses.
+
+Plots the Jahr-Stevens voltage-dependent magnesium block function B(V)
+used to model NMDA-receptor-mediated synaptic conductance.
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# initialize:
+t = 50
+delta_t = 2**(-10)
+N = int(t/delta_t)
+
+v = np.linspace(-100, 50, N+1)
+
+B = 1 / (1 + (np.exp(-0.062 * v) / 3.57))
+
+plt.figure(figsize=(7, 3))
+plt.plot(v, B, 'black')
+plt.ylim(0, 1)
+plt.xlim(-100, 50)
+plt.xlabel(r'$V_{{post}}$')
+plt.ylabel('B')
+plt.title('B_JAHR_STEVENS')
+plt.show()
