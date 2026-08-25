@@ -20,44 +20,46 @@ self-contained (parameters, model equations, and plotting all in one
 file) and opens with a docstring describing what it reproduces.
 
 ```
-chapter_03/   Hodgkin-Huxley gating variables
-chapter_04/   The Hodgkin-Huxley model
-chapter_05/   RTM, Wang-Buzsaki, and Erisir models
-chapter_07/   The leaky integrate-and-fire (LIF) model
-chapter_08/   Quadratic and theta integrate-and-fire models
-chapter_09/   Spike-frequency adaptation (AHP and M-current)
-chapter_10/   2D reductions and phase-plane analysis
-chapter_11/   Type I/II excitability and saddle-node bifurcations
-chapter_12/   2D reduction of the RTM model, fixed-point stability
-chapter_13/   The Hopf bifurcation
-chapter_20/   Synapses
-chapter_21/   Gap junctions
-chapter_22/   The Wilson-Cowan equations
-chapter_24/   Synchronization in networks of coupled oscillators
-chapter_30/   PING (pyramidal-interneuron network gamma) rhythms
-chapter_39/   Short-term synaptic plasticity
+Chapter 1/    The Hodgkin-Huxley model (introductory reproduction)
+Chapter 3/    Hodgkin-Huxley gating variables
+Chapter 4/    The Hodgkin-Huxley model
+Chapter 5/    RTM, Wang-Buzsaki, and Erisir models
+Chapter 7/    The leaky integrate-and-fire (LIF) model
+Chapter 8/    Quadratic and theta integrate-and-fire models
+Chapter 9/    Spike-frequency adaptation (AHP and M-current)
+Chapter 10/   2D reductions and phase-plane analysis
+Chapter 11/   Type I/II excitability and saddle-node bifurcations
+Chapter 12/   2D reduction of the RTM model, fixed-point stability
+Chapter 13/   The Hopf bifurcation
+Chapter 20/   Synapses
+Chapter 21/   Gap junctions
+Chapter 22/   The Wilson-Cowan equations
+Chapter 24/   Synchronization in networks of coupled oscillators
+Chapter 30/   PING (pyramidal-interneuron network gamma) rhythms
+Chapter 39/   Short-term synaptic plasticity
 ```
 
 ## Chapter Contents
 
 | Chapter | Topic | Scripts |
 |:---:|---|---|
-| 3 | HH gating variables | `hh_gating_variables.py` |
-| 4 | Hodgkin–Huxley model | `hodgkin_huxley_model.py` |
-| 5 | RTM / WB / Erisir models | `rtm_voltage_trace.py`, `wb_voltage_trace.py`, `erisir_voltage_trace.py`, `three_models_gating_variables.py` |
-| 7 | Leaky integrate-and-fire | `lif_voltage_trace.py`, `lif_neuron_with_hh.py` |
-| 8 | Quadratic / theta integrate-and-fire | `qif_voltage_trace.py`, `qif_infinite_threshold.py`, `theta_firing.py` |
-| 9 | Spike-frequency adaptation | `calcium_rise.py`, `m_current.py`, `lif_adapt.py`, `rtm_ahp.py`, `rtm_ahp_resting.py`, `rtm_m.py`, `rtm_m_resting.py`, `v_v_tilde.py` |
-| 10 | 2D reductions & phase planes | `reduced_hh.py`, `hh_nullclines_plus_solution.py`, `hh_h_plus_n.py`, `hh_cycle_speed.py`, `fn.py` |
-| 11 | Type I/II excitability | `saddle_node_bifurcation_1.py` |
-| 12 | 2D RTM reduction & stability | `rtm_2d_fp.py`, `rtm_2d_invariant_cycle.py`, `rtm_2d_stability_analysis.py` |
-| 13 | Hopf bifurcation | `hopf_sup_phase_plane.py`, `hopf_sub_phase_plane_1.py`, `hopf_sub_phase_plane_2.py`, `hopf_sup.py`, `hopf_sup_bif_diag.py`, `hopf_sup_bif_diag_1.py`, `hopf_sup_bif_diag_2.py` |
-| 20 | Synapses | `b_jahr_stevens.py`, `rtm_plot_q.py`, `rtm_plot_s.py`, `rtm_plot_s_two_variables.py`, `rtm_plot_s_prescribe_tau_peak.py` |
-| 21 | Gap junctions | `reset_threshold.py`, `wb_network_with_gj.py`, `wb_network_with_gj_subthreshold.py` |
-| 22 | Wilson–Cowan equations | `wilson_cowan_e_and_i.py`, `wilson_cowan_phase_plane.py`, `wilson_cowan_phase_plane_1.py` |
-| 24 | Network synchronization | `rtm_e_to_e_network_1.py`, `rtm_sync.py`, `rtm_splay.py` |
-| 30 | PING rhythms | `ping_1.py` |
-| 39 | Short-term synaptic plasticity | `rtm_with_depressing_s.py`, `rtm_with_depressing_and_facilitating_s.py`, `wb_with_depressing_s.py` |
+| 1 | Hodgkin-Huxley model (intro) | `HH_VOLTAGE_TRACE.py` |
+| 3 | HH gating variables | `HH_GATING_VARIABLES.py` |
+| 4 | Hodgkin–Huxley model | `Hodgkin-Huxley Model.py` |
+| 5 | RTM / WB / Erisir models | `RTM_VOLTAGE_TRACE.py`, `WB_VOLTAGE_TRACE.py`, `ERISIR_VOLTAGE_TRACE.py`, `THREE_MODELS_GATING_VARIABLES.py` |
+| 7 | Leaky integrate-and-fire | `LIF_VOLTAGE_TRACE.py`, `LIF_NEURON_WITH_HH.py` |
+| 8 | Quadratic / theta integrate-and-fire | `QIF_VOLTAGE_TRACE.py`, `QIF_INFINITE_THRESHOLD.py`, `THETA_FIRING.py` |
+| 9 | Spike-frequency adaptation | `CALCIUM_RISE.py`, `M_CURRENT.py`, `LIF_ADAPT.py`, `RTM_AHP.py`, `RTM_AHP_RESTING.py`, `RTM_M.py`, `RTM_M_RESTING.py`, `V_V_TILDE.py` |
+| 10 | 2D reductions & phase planes | `REDUCED_HH.py`, `HH_NULLCLINES_PLUS_SOLUTION.py`, `HH_H_PLUS_N.py`, `HH_CYCLE_SPEED.py`, `FN.py` |
+| 11 | Type I/II excitability | `SADDLE_NODE_BIFURCATION_1.py` |
+| 12 | 2D RTM reduction & stability | `RTM_2D_FP.py`, `RTM_2D_INVARIANT_CYCLE.py`, `RTM_2D_STABILITY_ANALYSIS.py` |
+| 13 | Hopf bifurcation | `HOPF_SUP_PHASE_PLANE.py`, `HOPF_SUB_PHASE_PLANE_1.py`, `HOPF_SUB_PHASE_PLANE_2.py`, `HOPF_SUP.py`, `HOPF_SUP_BIF_DIAG.py`, `HOPF_SUP_BIF_DIAG_1.py`, `HOPF_SUP_BIF_DIAG_2.py` |
+| 20 | Synapses | `B_JAHR_STEVENS.py`, `RTM_PLOT_Q.py`, `RTM_PLOT_S.py`, `RTM_PLOT_S_TWO_VARIABLES.py`, `RTM_PLOT_S_PRESCRIBE_TAU_PEAK.py` |
+| 21 | Gap junctions | `RESET_THRESHOLD.py`, `WB_NETWORK_WITH_GJ.py`, `WB_NETWORK_WITH_GJ_SUBTHRESHOLD.py` |
+| 22 | Wilson–Cowan equations | `WILSON_COWAN_E_AND_I.py`, `WILSON_COWAN_PHASE_PLANE.py`, `WILSON_COWAN_PHASE_PLANE_1.py` |
+| 24 | Network synchronization | `RTM_E_TO_E_NETWORK_1.py`, `RTM_SYNC.py`, `RTM_SPLAY.py` |
+| 30 | PING rhythms | `PING_1.py` |
+| 39 | Short-term synaptic plasticity | `RTM_WITH_DEPRESSING_S.py`, `RTM_WITH_DEPRESSING_AND_FACILITATING_S.py`, `WB_WITH_DEPRESSING_S.py` |
 
 ## Methods
 
@@ -84,7 +86,7 @@ pip install -r requirements.txt
 Each script is standalone and produces its plot(s) on execution, e.g.:
 
 ```bash
-python chapter_04/hodgkin_huxley_model.py
+python "Chapter 4/Hodgkin-Huxley Model.py"
 ```
 
 ## Reference
